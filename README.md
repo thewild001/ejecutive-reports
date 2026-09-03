@@ -1,4 +1,4 @@
-# REPORTS — Suite de reportería ejecutiva automatizada
+# REPORTS — Suite de reportes ejecutivos automatizados
 
 Tres reportes PDF profesionales, genéricos y configurables, para cualquier empresa
 de desarrollo de software que use **GESPRO/Redmine** y **GitLab**:
