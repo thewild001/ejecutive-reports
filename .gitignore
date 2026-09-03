@@ -1,0 +1,6 @@
+.venv/
+.env
+output/
+trends/trends_data.json
+__pycache__/
+*.pyc

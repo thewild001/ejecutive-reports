@@ -1,0 +1,28 @@
+services:
+  gespro:
+    build: .
+    image: reports-suite
+    env_file: .env
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./output:/app/output
+    command: ["python", "gespro/gespro_report.py"]
+
+  gitlab:
+    build: .
+    image: reports-suite
+    env_file: .env
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./output:/app/output
+    command: ["python", "gitlab/gitlab_report.py"]
+
+  trends:
+    build: .
+    image: reports-suite
+    env_file: .env
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./trends:/app/trends
+      - ./output:/app/output
+    command: ["python", "trends/trends_report.py"]

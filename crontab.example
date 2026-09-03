@@ -1,0 +1,10 @@
+# Ejemplos de programación (ajusta horarios a tu organización).
+# Variante local (sin docker):
+0 8 * * 1,4    cd /opt/REPORTS && ./run.sh gespro  >> logs/gespro.log 2>&1
+0 8 * * 2      cd /opt/REPORTS && ./run.sh gitlab  >> logs/gitlab.log 2>&1
+0 9 1,15 * *   cd /opt/REPORTS && ./run.sh trends  >> logs/trends.log 2>&1
+
+# Variante Docker (usa docker compose run; no requiere Python en el host):
+0 8 * * 1,4    cd /opt/REPORTS && docker compose run --rm gespro  >> logs/gespro.log 2>&1
+0 8 * * 2      cd /opt/REPORTS && docker compose run --rm gitlab  >> logs/gitlab.log 2>&1
+0 9 1,15 * *   cd /opt/REPORTS && docker compose run --rm trends  >> logs/trends.log 2>&1

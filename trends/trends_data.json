@@ -1,0 +1,34 @@
+{
+  "periodo": "Período de ejemplo — edita este archivo",
+  "resumen_ejecutivo": "Resumen de ejemplo. Reemplaza con la síntesis del período: los 3-5 movimientos tecnológicos más relevantes para tu organización.",
+  "secciones": [
+    {
+      "titulo": "Inteligencia Artificial",
+      "items": [
+        {
+          "nombre": "Agentes autónomos en procesos empresariales",
+          "detalle": "Adopción creciente de agentes LLM para automatizar reportería, soporte y análisis. Impacto directo en productividad de equipos de desarrollo.",
+          "impacto": "alto"
+        },
+        {
+          "nombre": "Modelos locales y edge",
+          "detalle": "Inferencia local con modelos cuantizados reduce dependencia de nube y costos.",
+          "impacto": "medio"
+        }
+      ]
+    },
+    {
+      "titulo": "DevOps y Plataformas",
+      "items": [
+        {
+          "nombre": "Platform engineering",
+          "detalle": "Consolidación de Internal Developer Platforms como estándar en equipos medianos.",
+          "impacto": "medio"
+        }
+      ]
+    }
+  ],
+  "fuentes": [
+    "Lista aquí las fuentes: blogs, RSS, arXiv, portales especializados..."
+  ]
+}

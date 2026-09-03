@@ -1,0 +1,62 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  REPORTS — Paquete de reportería ejecutiva automatizada
+#  Empresa de desarrollo de software (GESPRO/Redmine + GitLab + Tendencias)
+#  Copia este archivo, ajústalo a tu organización. Los secretos van en .env
+# ═══════════════════════════════════════════════════════════════════════════
+
+company:
+  name: "Mi Empresa de Software"        # Nombre que aparece en portadas/headers
+  unit: "Dirección de Desarrollo"       # Unidad/área que emite el reporte
+  issued_by: "Grupo de Inteligencia Empresarial"   # Autoría en el pie/portada
+  logo_path: ""                          # Opcional: ruta a PNG/JPG del logo
+  locale: "es"                           # es | en
+
+output:
+  dir: "./output"                        # Directorio de PDFs generados
+  keep_last: 10                          # Rotación de PDFs por tipo de reporte
+
+# ── Reporte 1: GESPRO / Redmine ─────────────────────────────────────────────
+gespro:
+  enabled: true
+  base_url: "https://gp.prod.uci.cu"   # Sin slash final
+  api_key_env: "REDMINE_API_KEY"             # Nombre de la var de entorno
+  verify_ssl: false
+  project_ids: [304]                          # [] = todos los proyectos visibles
+  closed_status_names: ["cerrada", "resuelta", "rechazada", "closed", "resolved", "rejected"]
+  filename_prefix: "informe_gespro"
+
+# ── Reporte 2: GitLab ────────────────────────────────────────────────────────
+gitlab:
+  enabled: true
+  base_url: "https://gitlab.prod.uci.cu"    # Sin slash final
+  token_env: "GITLAB_TOKEN"                  # Nombre de la var de entorno
+  group: "fortes"                                  # ej. "fortes" — vacío = todo lo visible
+  verify_ssl: false
+  max_projects: 25
+  stale_branch_days: 60                      # Umbral de rama "stale"
+  include_pipelines: true
+  filename_prefix: "informe_gitlab"
+
+# ── Reporte 3: Tendencias tecnológicas ──────────────────────────────────────
+trends:
+  enabled: true
+  data_file: "trends/trends_data.json"       # JSON con las temáticas a reportar
+  header_title: "VIGILANCIA TECNOLÓGICA"
+  filename_prefix: "informe_tendencias"
+
+# ── Entrega ──────────────────────────────────────────────────────────────────
+delivery:
+  email:
+    enabled: false
+    smtp_host: "smtp.miempresa.cu"
+    smtp_port: 587
+    starttls: true
+    verify_ssl: false
+    user_env: "SMTP_USER"
+    pass_env: "SMTP_PASS"
+    sender: "reportes@miempresa.cu"
+    recipients: ["direccion@miempresa.cu"]
+  telegram:
+    enabled: false
+    bot_token_env: "TELEGRAM_BOT_TOKEN"
+    chat_id_env: "TELEGRAM_CHAT_ID"
