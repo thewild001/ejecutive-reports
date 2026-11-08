@@ -100,6 +100,8 @@ class TrendsConfig(_Base):
     header_title: str = "Vigilancia Tecnológica"
     filename_prefix: str = "informe_tendencias"
     rss_feeds: list[str] = Field(default_factory=list)
+    # Si el JSON de datos es más viejo que esto, no se genera ni envía (0 = sin límite).
+    max_age_days: int = Field(default=0, ge=0)
 
     @field_validator("rss_feeds")
     @classmethod

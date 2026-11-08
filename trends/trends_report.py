@@ -32,6 +32,8 @@ from common.themes import get_theme
 
 log = logging.getLogger(__name__)
 
+EXIT_STALE_DATA = 5  # el JSON de datos supera trends.max_age_days
+
 IMPACT_LABEL = {"alto": "ALTO", "medio": "MEDIO", "bajo": "BAJO"}
 
 
@@ -81,6 +83,15 @@ def main() -> int:
         log.error("No existe el archivo de datos %s", data_path)
         log.error("Copia trends/trends_data.example.json a trends/trends_data.json y edítalo.")
         return 1
+
+    max_age = int(t.get("max_age_days") or 0)
+    if max_age:
+        age_days = (datetime.datetime.now().timestamp() - data_path.stat().st_mtime) / 86400
+        if age_days > max_age:
+            log.error("Los datos de tendencias están desactualizados: %s tiene %.1f días "
+                      "(máximo trends.max_age_days=%d). No se genera ni envía el boletín.",
+                      data_path.name, age_days, max_age)
+            return EXIT_STALE_DATA
 
     data = json.loads(data_path.read_text(encoding="utf-8"))
 

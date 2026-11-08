@@ -166,3 +166,21 @@ def test_ca_bundle_se_pasa_al_contexto_ssl(monkeypatch):
                         lambda **kw: captured.update(kw) or ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT))
     delivery._ssl_context({"verify_ssl": True, "ca_bundle": "/etc/ssl/ca-interna.pem"})
     assert captured == {"cafile": "/etc/ssl/ca-interna.pem"}
+
+
+def test_trends_rechaza_datos_desactualizados(tmp_path, monkeypatch):
+    """max_age_days evita reenviar indefinidamente un boletín cuyo JSON no se actualiza."""
+    import os
+    import time
+
+    from trends import trends_report
+
+    data = tmp_path / "datos.json"
+    data.write_text("{}", encoding="utf-8")
+    viejo = time.time() - 10 * 86400
+    os.utime(data, (viejo, viejo))
+    cfg = {"trends": {"enabled": True, "data_file": str(data), "max_age_days": 7},
+           "output": {"dir": tmp_path}}
+    monkeypatch.setattr(trends_report, "load_config", lambda *a, **k: cfg)
+    assert trends_report.main() == trends_report.EXIT_STALE_DATA
+    assert not list(tmp_path.glob("*.pdf"))
