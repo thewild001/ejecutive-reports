@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from common.settings import load_config, require_env
-from common.delivery import deliver
+from common.delivery import deliver, delivery_exit_code
 from common.settings import rotate_outputs
 from common.cache import ApiCache
 from common.exporters import export_rows
@@ -216,8 +216,9 @@ def main() -> int:
     exts = tuple(f".{f}" for f in cfg.get("export", {}).get("formats", ["pdf"]))
     rotate_outputs(out_dir, prefix, cfg["output"].get("keep_last", 10), exts=exts)
 
-    deliver(out_path, cfg, "Informe de Estado de Proyectos (GESPRO/Redmine)")
-    return 0
+    results = deliver(out_path, cfg, "Informe de Estado de Proyectos (GESPRO/Redmine)",
+                      report_key="gespro")
+    return delivery_exit_code(results)
 
 
 if __name__ == "__main__":

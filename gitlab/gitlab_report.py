@@ -17,7 +17,7 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from common.settings import load_config, require_env, rotate_outputs
-from common.delivery import deliver
+from common.delivery import deliver, delivery_exit_code
 from common.cache import ApiCache
 from common.exporters import export_rows
 from common.http_client import ApiError, build_client, checked_json
@@ -197,8 +197,9 @@ def main() -> int:
     exts = tuple(f".{f}" for f in cfg.get("export", {}).get("formats", ["pdf"]))
     rotate_outputs(out_dir, prefix, cfg["output"].get("keep_last", 10), exts=exts)
 
-    deliver(out_path, cfg, "Informe de Salud de Repositorios GitLab")
-    return 0
+    results = deliver(out_path, cfg, "Informe de Salud de Repositorios GitLab",
+                      report_key="gitlab")
+    return delivery_exit_code(results)
 
 
 if __name__ == "__main__":

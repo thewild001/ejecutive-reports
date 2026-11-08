@@ -117,6 +117,9 @@ class EmailConfig(_Base):
     pass_env: str = "SMTP_PASS"
     sender: str = ""
     recipients: list[str] = Field(default_factory=list)
+    ca_bundle: str = ""  # ruta a la CA interna (preferible a verify_ssl: false)
+    # Plantillas por reporte: {"gespro": {"subject": "...", "body": "..."}, ...}
+    messages: dict[str, dict[str, str]] = Field(default_factory=dict)
 
 
 class TelegramConfig(_Base):

@@ -25,7 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from common.settings import load_config, rotate_outputs, REPORTS_ROOT
 from common.pdfbase import ReportPDF
-from common.delivery import deliver
+from common.delivery import deliver, delivery_exit_code
 from common.i18n import t as _t
 from common.plugins import load_plugins, run_hook
 from common.themes import get_theme
@@ -101,8 +101,10 @@ def main() -> int:
     exts = tuple(f".{f}" for f in cfg.get("export", {}).get("formats", ["pdf"]))
     rotate_outputs(out_dir, prefix, cfg["output"].get("keep_last", 10), exts=exts)
 
-    deliver(out_path, cfg, f"{t.get('header_title', 'Boletín de Tendencias')} — {data.get('periodo', '')}")
-    return 0
+    results = deliver(out_path, cfg,
+                      f"{t.get('header_title', 'Boletín de Tendencias')} — {data.get('periodo', '')}",
+                      report_key="trends")
+    return delivery_exit_code(results)
 
 
 if __name__ == "__main__":
