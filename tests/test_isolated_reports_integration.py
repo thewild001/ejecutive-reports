@@ -20,11 +20,12 @@ from gitlab.executive_pdf import (  # noqa: E402
     health_label,
     health_score,
 )
-from trends.premium_pdf import (  # noqa: E402
+from trends.tech_trends_v2 import (  # noqa: E402
     auto_generate_summary,
-    build_premium_pdf,
+    branding_from_config,
+    build_report,
     group_signals_by_topic,
-    is_premium_data,
+    is_v2_data,
 )
 from trends.trends_report import build_pdf as build_trends_pdf  # noqa: E402
 
@@ -174,7 +175,7 @@ def test_gitlab_health_grouping_and_pdf():
 
 def test_trends_premium_grouping_summary_and_pdf():
     data = _premium_data()
-    assert is_premium_data(data)
+    assert is_v2_data(data)
     grouped = group_signals_by_topic(data)
     assert "IA para Desarrollo" in grouped
     assert "DevOps e Infraestructura" in grouped
@@ -188,9 +189,23 @@ def test_trends_premium_grouping_summary_and_pdf():
 
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "trends.pdf"
-        build_premium_pdf(data, CFG, out)
+        build_report(data, out, branding_from_config(CFG))
         assert out.is_file()
         assert out.stat().st_size > 4_000
+
+
+def test_trends_branding_viene_de_config_y_no_del_codigo():
+    """Genericidad: el boletín muestra la empresa de config y ninguna fija en código."""
+    from pypdf import PdfReader
+
+    cfg = {**CFG, "company": {**CFG["company"], "name": "EmpresaPrueba", "issued_by": "Equipo X"}}
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "t.pdf"
+        build_report(_premium_data(), out, branding_from_config(cfg))
+        text = "\n".join(p.extract_text() for p in PdfReader(str(out)).pages)
+    assert "EmpresaPrueba" in text and "Equipo X" in text
+    for literal in ("FORTES", "UCI"):
+        assert literal not in text
 
 
 def test_trends_report_supports_classic_and_premium_data():
