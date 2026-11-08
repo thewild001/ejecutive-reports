@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 import sys
 from pathlib import Path
 
@@ -25,16 +26,29 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from common.settings import load_config, rotate_outputs, REPORTS_ROOT
 from common.pdfbase import ReportPDF
 from common.delivery import deliver
+from common.i18n import t as _t
+from common.plugins import load_plugins, run_hook
+from common.themes import get_theme
+
+log = logging.getLogger(__name__)
 
 IMPACT_LABEL = {"alto": "ALTO", "medio": "MEDIO", "bajo": "BAJO"}
 
 
 def build_pdf(data: dict, cfg: dict, out_path: Path) -> None:
-    pdf = ReportPDF(cfg["company"], cfg["trends"].get("header_title", "Vigilancia Tecnológica"))
+    from trends.premium_pdf import build_premium_pdf, is_premium_data
+
+    if is_premium_data(data):
+        build_premium_pdf(data, cfg, out_path)
+        return
+
+    loc = cfg["company"].get("locale", "es")
+    pdf = ReportPDF(cfg["company"], cfg["trends"].get("header_title", "Vigilancia Tecnológica"),
+                    theme=get_theme(cfg.get("ui", {}).get("theme")))
     pdf.cover(data.get("periodo", datetime.datetime.now().strftime("%B %Y")))
 
     pdf.add_page()
-    pdf.section("Resumen ejecutivo")
+    pdf.section(_t("executive_summary", loc))
     resumen = (data.get("resumen_ejecutivo") or "").strip()
     pdf.para(resumen if resumen else "Datos no disponibles para el resumen de este período.")
 
@@ -47,7 +61,7 @@ def build_pdf(data: dict, cfg: dict, out_path: Path) -> None:
 
     fuentes = data.get("fuentes") or []
     if fuentes:
-        pdf.section("Fuentes consultadas")
+        pdf.section(_t("sources", loc))
         for f in fuentes:
             pdf.bullet(str(f))
 
@@ -58,14 +72,14 @@ def main() -> int:
     cfg = load_config()
     t = cfg.get("trends", {})
     if not t.get("enabled"):
-        print("Tendencias deshabilitado en config.yaml"); return 0
+        log.info("Tendencias deshabilitado en config.yaml"); return 0
 
     data_path = Path(t.get("data_file", "trends/trends_data.json"))
     if not data_path.is_absolute():
         data_path = REPORTS_ROOT / data_path
     if not data_path.is_file():
-        print(f"ERROR: no existe el archivo de datos {data_path}")
-        print("Copia trends/trends_data.example.json a trends/trends_data.json y edítalo.")
+        log.error("No existe el archivo de datos %s", data_path)
+        log.error("Copia trends/trends_data.example.json a trends/trends_data.json y edítalo.")
         return 1
 
     data = json.loads(data_path.read_text(encoding="utf-8"))
@@ -75,8 +89,17 @@ def main() -> int:
     prefix = t.get("filename_prefix", "informe_tendencias")
     out_path = out_dir / f"{prefix}_{stamp}.pdf"
     build_pdf(data, cfg, out_path)
-    rotate_outputs(out_dir, prefix, cfg["output"].get("keep_last", 10))
-    print(f"PDF generado: {out_path}")
+    log.info("PDF generado: %s", out_path)
+
+    from common.exporters import export_rows
+    rows = [[sec.get("titulo", ""), it.get("nombre", ""), it.get("impacto", "")]
+            for sec in data.get("secciones", []) for it in sec.get("items", [])]
+    created = export_rows(["Sección", "Tendencia", "Impacto"], rows, out_path,
+                          cfg.get("export", {}).get("formats", ["pdf"]))
+    plugins = load_plugins(cfg)
+    run_hook(plugins, "post_export", "trends", [out_path, *created], cfg)
+    exts = tuple(f".{f}" for f in cfg.get("export", {}).get("formats", ["pdf"]))
+    rotate_outputs(out_dir, prefix, cfg["output"].get("keep_last", 10), exts=exts)
 
     deliver(out_path, cfg, f"{t.get('header_title', 'Boletín de Tendencias')} — {data.get('periodo', '')}")
     return 0

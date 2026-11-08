@@ -15,14 +15,44 @@ output:
   dir: "./output"                        # Directorio de PDFs generados
   keep_last: 10                          # Rotación de PDFs por tipo de reporte
 
+# ── Logging (Fase 1) ─────────────────────────────────────────────────────────
+logging:
+  level: "INFO"                          # DEBUG | INFO | WARNING | ERROR
+  file: ""                               # ej. "output/reports.log" — vacío = solo consola
+  max_bytes: 1048576                     # rotación del log (1 MB)
+  backup_count: 3
+
+# ── Performance (Fase 3) ─────────────────────────────────────────────────────
+cache:
+  enabled: false                         # true = cachea respuestas GET en output/.cache.db
+  ttl_seconds: 3600                      # TTL de las respuestas cacheadas
+
+execution:
+  max_workers: 4                         # proyectos en paralelo (1 = secuencial)
+
+export:
+  formats: ["pdf"]                       # pdf | csv | json | xlsx (xlsx requiere openpyxl)
+
+# ── UX y extensibilidad (Fase 4) ─────────────────────────────────────────────
+ui:
+  theme: "corporativo"                   # corporativo | minimal | ejecutivo
+
+plugins:
+  enabled: []                            # ej. ["logfile"] — módulos en plugins/
+
+web:
+  port: 8080                             # dashboard opcional (uvicorn web.app:app)
+
 # ── Reporte 1: GESPRO / Redmine ─────────────────────────────────────────────
 gespro:
   enabled: true
   base_url: "https://gp.prod.uci.cu"   # Sin slash final
   api_key_env: "REDMINE_API_KEY"             # Nombre de la var de entorno
+  # Seguridad: mantén verify_ssl en true salvo CA interna no confiable (ver README §Seguridad)
   verify_ssl: false
   project_ids: [304]                          # [] = todos los proyectos visibles
   closed_status_names: ["cerrada", "resuelta", "rechazada", "closed", "resolved", "rejected"]
+  previous_period_days: 30                 # Ventana de comparativa vs período anterior (Fase 2)
   filename_prefix: "informe_gespro"
 
 # ── Reporte 2: GitLab ────────────────────────────────────────────────────────
@@ -31,10 +61,13 @@ gitlab:
   base_url: "https://gitlab.prod.uci.cu"    # Sin slash final
   token_env: "GITLAB_TOKEN"                  # Nombre de la var de entorno
   group: "fortes"                                  # ej. "fortes" — vacío = todo lo visible
+  # Seguridad: mantén verify_ssl en true salvo CA interna no confiable (ver README §Seguridad)
   verify_ssl: false
   max_projects: 25
   stale_branch_days: 60                      # Umbral de rama "stale"
   include_pipelines: true
+  include_merge_requests: true             # Métricas de MRs y contribuidores (Fase 2)
+  activity_days: 90                        # Ventana de actividad para MRs/commits (Fase 2)
   filename_prefix: "informe_gitlab"
 
 # ── Reporte 3: Tendencias tecnológicas ──────────────────────────────────────
@@ -43,6 +76,7 @@ trends:
   data_file: "trends/trends_data.json"       # JSON con las temáticas a reportar
   header_title: "VIGILANCIA TECNOLÓGICA"
   filename_prefix: "informe_tendencias"
+  rss_feeds: []                            # URLs RSS/Atom para trends/rss_fetcher.py (Fase 2)
 
 # ── Entrega ──────────────────────────────────────────────────────────────────
 delivery:
@@ -54,8 +88,8 @@ delivery:
     verify_ssl: false
     user_env: "SMTP_USER"
     pass_env: "SMTP_PASS"
-    sender: "reportes@miempresa.cu"
-    recipients: ["direccion@miempresa.cu"]
+    sender: "fortes@uci.cu"
+    recipients: ["fortes@uci.cu"]
   telegram:
     enabled: false
     bot_token_env: "TELEGRAM_BOT_TOKEN"

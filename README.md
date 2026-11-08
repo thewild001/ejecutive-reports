@@ -1,4 +1,4 @@
-# REPORTS — Suite de reportes ejecutivos automatizados
+# REPORTS — Suite de reportería ejecutiva automatizada
 
 Tres reportes PDF profesionales, genéricos y configurables, para cualquier empresa
 de desarrollo de software que use **GESPRO/Redmine** y **GitLab**:
@@ -14,11 +14,18 @@ de desarrollo de software que use **GESPRO/Redmine** y **GitLab**:
 - **GESPRO/Redmine**: indicadores consolidados, tasa de cierre por proyecto, distribución
   de estados, carga de trabajo por miembro, detección de tareas vencidas, miembros sin
   asignación y sobrecargados, recomendaciones accionables automáticas.
+  **Fase 2**: comparativa vs período anterior (creadas/cerradas con delta), velocidad
+  del equipo (cerradas/semana), cuellos de botella por estado y miembros con carga
+  creciente — todo computado desde las tareas ya recolectadas, sin llamadas extra.
 - **GitLab**: última actividad, ramas totales y *stale* (umbral configurable), issues
-  abiertos, tasa de éxito de pipelines, alertas y recomendaciones (limpieza de ramas,
-  CI deteriorado, proyectos inactivos).
+  abiertos, tasa de éxito de pipelines, alertas y recomendaciones.
+  **Fase 2**: Merge Requests (abiertos/mergeados, tasa de merge, tiempo medio de
+  revisión), contribuidores activos vs inactivos y topics por proyecto
+  (`gitlab.include_merge_requests`, ventana `gitlab.activity_days`).
 - **Tendencias**: boletín editable desde `trends/trends_data.json` con resumen ejecutivo,
   secciones temáticas, etiquetas de impacto (alto/medio/bajo) y fuentes.
+  **Fase 2**: `trends/rss_fetcher.py` genera un borrador (`trends/trends_draft.json`)
+  desde los feeds de `trends.rss_feeds` para acelerar la redacción.
 
 ## Instalación
 
@@ -61,8 +68,100 @@ Ver `crontab.example` con variantes local y Docker.
 ## Seguridad
 
 - `.env` nunca se versiona (ver `.gitignore` si incorporas a git).
-- GitLab: token con scope `read_api` solamente.
-- Redmine/GESPRO: clave API de una cuenta de solo lectura recomendada.
+- **Permisos mínimos por token:**
+  - GitLab: token con scope `read_api` solamente.
+  - Redmine/GESPRO: clave API de una cuenta de solo lectura recomendada.
+  - SMTP: cuenta dedicada de envío, sin buzón de usuario.
+  - Telegram: bot dedicado, chat_id de canal/grupo de reportes.
+- `verify_ssl: true` es el default recomendado. Solo desactívalo si tu CA
+  interna no está en el trust store del sistema — en ese caso evalúa añadir
+  el certificado CA al sistema en lugar de deshabilitar la verificación.
+- Los errores de API reportan método, ruta y código HTTP, nunca headers
+  (donde viajan los tokens).
+- Los logs (sección `logging` en config.yaml) nunca registran claves,
+  tokens ni contraseñas.
+
+## Robustez (Fase 1)
+
+- La configuración se valida al arrancar (Pydantic): errores de tipo, URLs
+  malformadas o valores fuera de rango abortan con un listado claro **antes**
+  de cualquier llamada de red.
+- Las llamadas HTTP reintentan automáticamente errores transitorios
+  (5xx, red, timeout) con backoff exponencial (3 intentos). Los errores 4xx
+  fallan de inmediato.
+- Timeout configurable por fuente: `gespro.timeout_seconds` /
+  `gitlab.timeout_seconds` (default 30).
+- Logging estructurado a consola y, opcionalmente, a archivo rotativo:
+  `logging.file: "output/reports.log"`.
+- Tests: `pytest` (instala deps de desarrollo con `uv sync` o
+  `pip install pytest`).
+
+## Métricas enriquecidas (Fase 2)
+
+- **GESPRO**: `gespro.previous_period_days` (default 30) define la ventana de la
+  comparativa creadas/cerradas vs período anterior, la velocidad del equipo y la
+  detección de carga creciente por miembro. Los cuellos de botella se detectan
+  cuando un estado abierto concentra ≥ 40 % de las tareas abiertas del proyecto.
+- **GitLab**: `gitlab.include_merge_requests: false` desactiva las llamadas de
+  métricas Fase 2 (MRs, contribuidores) si la instancia es muy grande o el token
+  tiene acceso limitado. `gitlab.activity_days` (default 90) fija la ventana.
+- **Tendencias RSS**: define `trends.rss_feeds` (lista de URLs RSS/Atom) y ejecuta:
+
+  ```bash
+  python trends/rss_fetcher.py
+  ```
+
+  Genera `trends/trends_draft.json` con la estructura de `trends_data.json`
+  (una sección por feed, `impacto` por definir) para edición humana. Los feeds
+  se descargan con el cliente HTTP con retry/timeout y se parsean con la stdlib
+  (`xml.etree.ElementTree`) — sin dependencias nuevas.
+
+## Performance y exports (Fase 3)
+
+- **Caché de API** (`cache.enabled: true`): las respuestas GET exitosas se
+  guardan en `output/.cache.db` (SQLite; si el intérprete no trae `_sqlite3`,
+  degrada automáticamente a JSON) con TTL de `cache.ttl_seconds` (def. 1 h).
+  La segunda ejecución reutiliza respuestas — los hits se ven con
+  `logging.level: DEBUG`. Los errores nunca se cachean.
+- **Paralelismo** (`execution.max_workers`, def. 4): los proyectos de GESPRO y
+  GitLab se analizan en paralelo con `concurrent.futures` preservando el orden
+  en el PDF. `max_workers: 1` = comportamiento secuencial clásico.
+- **Exports** (`export.formats`): además del PDF puedes generar `csv`, `json`
+  y `xlsx` (requiere `openpyxl`; si falta, se omite con warning) con las tablas
+  de resumen. La rotación `output.keep_last` aplica a todos los formatos.
+- **Snapshot incremental ligero**: cada reporte guarda
+  `output/.snapshot_<prefijo>.json` con sus métricas clave y el resumen
+  ejecutivo muestra los deltas vs la ejecución anterior (↑/↓ por proyecto).
+
+## UX y extensibilidad (Fase 4)
+
+- **CLI** (Typer): `./run.sh` sigue funcionando, pero ahora también puedes usar
+
+  ```bash
+  python cli.py run all --force --workers 8 --format csv,json
+  python cli.py validate      # verifica config + variables de entorno
+  python cli.py cache clear   # vacía la caché de API
+  python cli.py rss-draft     # borrador de tendencias desde RSS
+  ```
+
+- **Temas del PDF** (`ui.theme`): `corporativo` (default, paleta actual),
+  `minimal` (monocromo) y `ejecutivo` (azul marino/acer). Sin cambio visual
+  con el default.
+- **i18n**: `company.locale: "es" | "en"` traduce títulos de sección y
+  cabeceras de tabla (catálogos en `locales/*.yaml`; el contenido dinámico
+  no se traduce).
+- **Plugins**: módulos Python en `plugins/` habilitados en
+  `plugins.enabled`. Hooks: `post_collect(report, rows, cfg)` (puede
+  transformar filas) y `post_export(report, paths, cfg)`. Ejemplo incluido:
+  `plugins/logfile.py`. Un plugin que falla solo deja warning en el log.
+- **Dashboard web opcional** (FastAPI + Jinja2, fuera del crontab):
+
+  ```bash
+  uvicorn web.app:app --port 8080
+  ```
+
+  Lista los últimos reportes por tipo, descarga de archivos y métricas del
+  último snapshot.
 
 ## Estructura
 

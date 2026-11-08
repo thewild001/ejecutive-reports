@@ -2,5 +2,34 @@
 .env
 output/
 trends/trends_data.json
+trends/trends_draft.json
 __pycache__/
 *.pyc
+
+# Herramientas locales MentorKit / runtime (mantener configuración y skills, ignorar dependencias)
+.opencode/node_modules/
+.opencode/.mentorkit/venv/
+.opencode/.mentorkit/python-path.txt
+.opencode/.mentorkit/__pycache__/
+.opencode/skills/superpowers/
+.omo/
+.atl/
+.codebase-memory/
+
+# Testing y cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Empaquetado
+build/
+dist/
+*.egg-info/
+
+# Cachés de análisis
+.mypy_cache/
+.ruff_cache/
+
+# Logs y bases locales
+*.log
+*.db

@@ -9,6 +9,7 @@ tasa de éxito de pipelines (opcional). Incluye resumen ejecutivo y recomendacio
 from __future__ import annotations
 
 import datetime
+import logging
 import sys
 from pathlib import Path
 
@@ -16,22 +17,29 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from common.settings import load_config, require_env, rotate_outputs
-from common.pdfbase import ReportPDF
 from common.delivery import deliver
+from common.cache import ApiCache
+from common.exporters import export_rows
+from common.http_client import ApiError, build_client, checked_json
+from common.plugins import load_plugins, run_hook
+from gitlab.metrics import collect_metrics
+
+log = logging.getLogger(__name__)
 
 
 class GitLabAPI:
-    def __init__(self, base_url: str, token: str, verify_ssl: bool = False):
-        self.client = httpx.Client(
-            base_url=base_url.rstrip("/") + "/api/v4",
-            verify=verify_ssl, timeout=30.0,
+    def __init__(self, base_url: str, token: str, verify_ssl: bool = False,
+                 timeout: float = 30.0, cache=None):
+        self.cache = cache
+        self.client = build_client(
+            base_url.rstrip("/") + "/api/v4",
             headers={"PRIVATE-TOKEN": token},
+            verify_ssl=verify_ssl,
+            timeout=timeout,
         )
 
     def _get(self, path, params=None):
-        resp = self.client.get(path, params=params)
-        resp.raise_for_status()
-        return resp.json()
+        return checked_json(self.client, path, params, cache=self.cache)
 
     def paginate(self, path, params=None, per_page=100):
         params = dict(params or {}, per_page=per_page)
@@ -63,7 +71,8 @@ class GitLabAPI:
     def pipelines(self, pid, limit=20):
         try:
             return self._get(f"/projects/{pid}/pipelines", {"per_page": limit})
-        except httpx.HTTPStatusError:
+        except ApiError:
+            log.warning("Pipelines no disponibles para el proyecto %s", pid)
             return []
 
 
@@ -77,7 +86,7 @@ def analyze_project(api: GitLabAPI, p: dict, cfg: dict) -> dict:
     try:
         branches = api.branches(pid)
     except Exception:
-        pass
+        log.warning("Ramas no disponibles para el proyecto %s", pid)
     stale = 0
     for b in branches:
         committed = (b.get("commit") or {}).get("committed_date")
@@ -89,6 +98,7 @@ def analyze_project(api: GitLabAPI, p: dict, cfg: dict) -> dict:
     try:
         open_issues = api.open_issues(pid)
     except Exception:
+        log.warning("Issues no disponibles para el proyecto %s", pid)
         open_issues = None
 
     pipelines = api.pipelines(pid) if cfg["gitlab"].get("include_pipelines") else []
@@ -107,86 +117,85 @@ def analyze_project(api: GitLabAPI, p: dict, cfg: dict) -> dict:
         "open_issues": open_issues,
         "pipe_rate": pipe_rate,
         "web_url": p.get("web_url", ""),
+        "metrics": collect_metrics(api, p, cfg),
     }
 
 
-def build_pdf(rows: list[dict], cfg: dict, out_path: Path) -> None:
-    pdf = ReportPDF(cfg["company"], "Informe de Salud de Repositorios GitLab")
-    pdf.cover("Actividad, ramas, issues y pipelines del grupo")
+def summary_table(rows: list[dict]) -> tuple[list[str], list[list]]:
+    """Tabla del resumen ejecutivo — compartida entre PDF y exports (Fase 3)."""
+    headers = ["Proyecto", "Últ. actividad", "Ramas", "Stale", "Issues", "Pipeline %"]
+    data = [[
+        r["name"][:34], r["last_activity"], r["branches"], r["stale"],
+        r["open_issues"] if r["open_issues"] is not None else "-",
+        f"{r['pipe_rate']}" if r["pipe_rate"] is not None else "-",
+    ] for r in rows]
+    return headers, data
 
-    pdf.add_page()
-    pdf.section("1. Resumen ejecutivo")
-    total_stale = sum(r["stale"] for r in rows)
-    total_branches = sum(r["branches"] for r in rows)
-    total_open = sum(r["open_issues"] for r in rows if isinstance(r["open_issues"], int))
-    with_pipes = [r for r in rows if r["pipe_rate"] is not None]
-    avg_pipe = round(sum(r["pipe_rate"] for r in with_pipes) / len(with_pipes), 1) if with_pipes else None
-    pdf.para(
-        f"Se analizaron {len(rows)} proyectos: {total_branches} ramas totales, de las cuales "
-        f"{total_stale} están sin actividad por encima del umbral configurado (stale). "
-        f"Issues abiertos acumulados: {total_open}."
-        + (f" Tasa media de éxito de pipelines: {avg_pipe}%." if avg_pipe is not None else "")
-    )
 
-    pdf.table(
-        ["Proyecto", "Últ. actividad", "Ramas", "Stale", "Issues", "Pipeline %"],
-        [[
-            r["name"][:34], r["last_activity"], r["branches"], r["stale"],
-            r["open_issues"] if r["open_issues"] is not None else "-",
-            f"{r['pipe_rate']}" if r["pipe_rate"] is not None else "-",
-        ] for r in rows],
-        widths=[60, 26, 20, 20, 24, 30],
-    )
+def build_pdf(rows: list[dict], cfg: dict, out_path: Path,
+              deltas: list[str] | None = None) -> None:
+    from gitlab.executive_pdf import build_executive_pdf
 
-    pdf.section("2. Alertas y recomendaciones")
-    worst_stale = sorted(rows, key=lambda r: -r["stale"])[:3]
-    for r in worst_stale:
-        if r["stale"] > 0:
-            pdf.bullet(f"{r['name']}: {r['stale']} ramas sin actividad — valorar limpieza (deuda técnica / código abandonado).")
-    low_pipes = [r for r in rows if r["pipe_rate"] is not None and r["pipe_rate"] < 70]
-    for r in low_pipes:
-        pdf.bullet(f"{r['name']}: pipelines con {r['pipe_rate']}% de éxito — revisar fallos recurrentes de CI/CD.")
-    inactive = [r for r in rows if r["last_activity"] and
-                (datetime.date.today() - datetime.date.fromisoformat(r["last_activity"])).days > 60]
-    for r in inactive:
-        pdf.bullet(f"{r['name']}: sin actividad desde {r['last_activity']} — confirmar si el proyecto sigue vivo o archivarlo.")
-    if not (worst_stale[0]["stale"] if worst_stale else 0) and not low_pipes and not inactive:
-        pdf.para("Sin alertas: todos los proyectos presentan actividad reciente, ramas saludables y pipelines estables.")
-
-    pdf.section("3. Detalle por proyecto")
-    for r in rows:
-        pdf.section(r["name"])
-        pdf.kv_row("Ruta", r["path"])
-        pdf.kv_row("Última actividad", r["last_activity"] or "Sin datos")
-        pdf.kv_row("Ramas (stale)", f"{r['branches']} ({r['stale']})")
-        pdf.kv_row("Issues abiertos", str(r["open_issues"]) if r["open_issues"] is not None else "No disponible")
-        pdf.kv_row("Éxito pipelines", f"{r['pipe_rate']}%" if r["pipe_rate"] is not None else "No disponible")
-        if r["web_url"]:
-            pdf.para(r["web_url"], size=8)
-
-    pdf.output(str(out_path))
+    build_executive_pdf(rows, cfg, out_path, deltas)
 
 
 def main() -> int:
     cfg = load_config()
     g = cfg.get("gitlab", {})
     if not g.get("enabled"):
-        print("GitLab deshabilitado en config.yaml"); return 0
+        log.info("GitLab deshabilitado en config.yaml"); return 0
 
     token = require_env(g.get("token_env", "GITLAB_TOKEN"), "token de GitLab")
-    api = GitLabAPI(g["base_url"], token, verify_ssl=g.get("verify_ssl", False))
+    cache = ApiCache.from_config(cfg)
+    api = GitLabAPI(g["base_url"], token, verify_ssl=g.get("verify_ssl", False),
+                    timeout=float(g.get("timeout_seconds", 30)), cache=cache)
 
     projects = api.projects(g.get("group") or None, int(g.get("max_projects", 25)))
-    print(f"Analizando {len(projects)} proyectos de {g['base_url']} ...")
-    rows = [analyze_project(api, p, cfg) for p in projects]
+    log.info("Analizando %d proyectos de %s ...", len(projects), g["base_url"])
+
+    workers = int(cfg.get("execution", {}).get("max_workers", 4))
+    if workers > 1 and len(projects) > 1:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            rows = list(pool.map(lambda p: analyze_project(api, p, cfg), projects))
+    else:
+        rows = [analyze_project(api, p, cfg) for p in projects]
+    cache.close()
+
+    plugins = load_plugins(cfg)
+    for result in run_hook(plugins, "post_collect", "gitlab", rows, cfg):
+        if result is not None:
+            rows = result
 
     out_dir = cfg["output"]["dir"]
     stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
     prefix = g.get("filename_prefix", "informe_gitlab")
     out_path = out_dir / f"{prefix}_{stamp}.pdf"
-    build_pdf(rows, cfg, out_path)
-    rotate_outputs(out_dir, prefix, cfg["output"].get("keep_last", 10))
-    print(f"PDF generado: {out_path}")
+
+    from common import snapshots
+    prev = snapshots.load(out_dir, prefix)
+    current = {
+        r["name"]: {k: r[k] for k in ("branches", "stale", "open_issues")
+                    if r[k] is not None}
+        | ({"mr_open": r["metrics"]["mrs"]["mr_open"]}
+           if r["metrics"].get("mrs") else {})
+        for r in rows
+    }
+    deltas = snapshots.diff(prev, current, {
+        "branches": "ramas", "stale": "stale",
+        "open_issues": "issues abiertos", "mr_open": "MRs abiertos",
+    })
+    snapshots.save(out_dir, prefix, current)
+
+    build_pdf(rows, cfg, out_path, deltas)
+    log.info("PDF generado: %s", out_path)
+
+    headers, data = summary_table(rows)
+    created = export_rows(headers, data, out_path,
+                          cfg.get("export", {}).get("formats", ["pdf"]))
+    run_hook(plugins, "post_export", "gitlab", [out_path, *created], cfg)
+    exts = tuple(f".{f}" for f in cfg.get("export", {}).get("formats", ["pdf"]))
+    rotate_outputs(out_dir, prefix, cfg["output"].get("keep_last", 10), exts=exts)
 
     deliver(out_path, cfg, "Informe de Salud de Repositorios GitLab")
     return 0

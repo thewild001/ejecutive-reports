@@ -36,10 +36,12 @@ def find_fonts() -> tuple[str, str] | tuple[None, None]:
 class ReportPDF(FPDF):
     """Base PDF: header with company/unit, footer with page numbers and issuer."""
 
-    def __init__(self, company: dict, report_title: str):
+    def __init__(self, company: dict, report_title: str, theme: dict | None = None):
         super().__init__(orientation="P", unit="mm", format="A4")
         self.company = company
         self.report_title = report_title
+        self._theme = theme or {"ink": INK, "accent": GOLD, "gray": GRAY,
+                                "light": LIGHT, "white": WHITE}
         self.set_auto_page_break(auto=True, margin=18)
         self.set_margins(15, 22, 15)
         reg, bold = find_fonts()
@@ -54,12 +56,12 @@ class ReportPDF(FPDF):
     # ── fpdf hooks ────────────────────────────────────────────────────────
     def header(self):
         self.set_font(self._font, "B", 9)
-        self.set_text_color(*GOLD)
+        self.set_text_color(*self._theme["accent"])
         self.cell(0, 5, self.company.get("name", ""), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         self.set_font(self._font, "", 8)
-        self.set_text_color(*GRAY)
+        self.set_text_color(*self._theme["gray"])
         self.cell(0, 4, self.company.get("unit", ""), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        self.set_draw_color(*GOLD)
+        self.set_draw_color(*self._theme["accent"])
         self.set_line_width(0.4)
         self.line(self.l_margin, self.get_y() + 1, self.w - self.r_margin, self.get_y() + 1)
         self.ln(4)
@@ -67,7 +69,7 @@ class ReportPDF(FPDF):
     def footer(self):
         self.set_y(-14)
         self.set_font(self._font, "", 7)
-        self.set_text_color(*GRAY)
+        self.set_text_color(*self._theme["gray"])
         issued = self.company.get("issued_by", "")
         self.cell(0, 4, f"{issued} | Página {self.page_no()}/{{nb}}", align="C")
 
@@ -76,16 +78,16 @@ class ReportPDF(FPDF):
         self.add_page()
         self.ln(40)
         self.set_font(self._font, "B", 24)
-        self.set_text_color(*INK)
+        self.set_text_color(*self._theme["ink"])
         self.multi_cell(0, 12, self.report_title, align="C")
         self.ln(4)
         self.set_font(self._font, "", 13)
-        self.set_text_color(*GOLD)
+        self.set_text_color(*self._theme["accent"])
         if subtitle:
             self.multi_cell(0, 8, subtitle, align="C")
         self.ln(10)
         self.set_font(self._font, "", 11)
-        self.set_text_color(*GRAY)
+        self.set_text_color(*self._theme["gray"])
         self.multi_cell(
             0, 7,
             f"{self.company.get('name', '')}\n{self.company.get('unit', '')}\n"
@@ -94,19 +96,19 @@ class ReportPDF(FPDF):
         )
         self.ln(20)
         self.set_font(self._font, "", 10)
-        self.set_text_color(*INK)
+        self.set_text_color(*self._theme["ink"])
         self.multi_cell(0, 6, self.company.get("issued_by", ""), align="C")
 
     def section(self, title: str) -> None:
         self.ln(3)
         self.set_font(self._font, "B", 13)
-        self.set_text_color(*GOLD)
+        self.set_text_color(*self._theme["accent"])
         self.cell(0, 8, title, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        self.set_text_color(*INK)
+        self.set_text_color(*self._theme["ink"])
 
     def para(self, text: str, size: int = 10) -> None:
         self.set_font(self._font, "", size)
-        self.set_text_color(*INK)
+        self.set_text_color(*self._theme["ink"])
         self.multi_cell(0, 5.5, text)
         self.ln(1)
 
@@ -128,15 +130,15 @@ class ReportPDF(FPDF):
             usable = self.w - self.l_margin - self.r_margin
             widths = [usable / len(headers)] * len(headers)
         self.set_font(self._font, "B", 9)
-        self.set_fill_color(*LIGHT)
-        self.set_text_color(*INK)
+        self.set_fill_color(*self._theme["light"])
+        self.set_text_color(*self._theme["ink"])
         for h, w in zip(headers, widths):
             self.cell(w, 7, str(h), border=1, fill=True, align="C")
         self.ln()
         self.set_font(self._font, "", 8.5)
         fill = False
         for row in rows:
-            self.set_fill_color(*(WHITE if not fill else LIGHT))
+            self.set_fill_color(*(self._theme["white"] if not fill else self._theme["light"]))
             for cell, w in zip(row, widths):
                 self.cell(w, 6, str(cell), border=1, fill=True, align="C")
             self.ln()
@@ -144,8 +146,8 @@ class ReportPDF(FPDF):
         self.ln(2)
 
     def card(self, title: str, body: str) -> None:
-        self.set_fill_color(*LIGHT)
-        self.set_draw_color(*GOLD)
+        self.set_fill_color(*self._theme["light"])
+        self.set_draw_color(*self._theme["accent"])
         self.set_font(self._font, "B", 10)
         y0 = self.get_y()
         self.multi_cell(0, 6, title, border=0, fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)

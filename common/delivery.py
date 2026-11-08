@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 import smtplib
 import ssl
 import urllib.request
@@ -12,6 +13,8 @@ from email.mime.text import MIMEText
 from pathlib import Path
 
 from .settings import require_env
+
+log = logging.getLogger(__name__)
 
 
 def send_email(pdf_path: Path, cfg: dict, subject: str, body: str) -> bool:
@@ -41,7 +44,7 @@ def send_email(pdf_path: Path, cfg: dict, subject: str, body: str) -> bool:
             server.ehlo()
         server.login(user, password)
         server.sendmail(msg["From"], mail.get("recipients", []), msg.as_string())
-    print(f"[delivery] Email enviado a {msg['To']}")
+    log.info("Email enviado a %s", msg["To"])
     return True
 
 
@@ -71,7 +74,10 @@ def send_telegram(pdf_path: Path, cfg: dict, caption: str) -> bool:
     req = urllib.request.Request(url, data=payload, headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
     with urllib.request.urlopen(req, timeout=60) as resp:
         ok = resp.status == 200
-    print(f"[delivery] Telegram {'enviado' if ok else 'falló'} a chat {chat_id}")
+    if ok:
+        log.info("Telegram enviado a chat %s", chat_id)
+    else:
+        log.warning("Telegram falló (chat %s)", chat_id)
     return ok
 
 

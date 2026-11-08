@@ -29,12 +29,25 @@ def load_config(config_path: str | None = None) -> dict:
     cfg_path = Path(config_path) if config_path else REPORTS_ROOT / "config.yaml"
     with open(cfg_path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
+    if not isinstance(cfg, dict):
+        raise SystemExit(f"ERROR: {cfg_path} no contiene un documento YAML válido.")
+
+    # Validación de schema (Fase 1) antes de cualquier llamada de red.
+    from common.config_models import validate_config
+
+    model = validate_config(cfg)
+    cfg = model.model_dump()
+
     cfg["_root"] = REPORTS_ROOT
     out_dir = Path(cfg.get("output", {}).get("dir", "./output"))
     if not out_dir.is_absolute():
         out_dir = REPORTS_ROOT / out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     cfg["output"]["dir"] = out_dir
+
+    from common.logging_config import setup_logging
+
+    setup_logging(cfg, root=REPORTS_ROOT)
     return cfg
 
 
@@ -48,7 +61,9 @@ def require_env(name: str, purpose: str) -> str:
     return value
 
 
-def rotate_outputs(out_dir: Path, prefix: str, keep: int = 10) -> None:
-    files = sorted(out_dir.glob(f"{prefix}_*.pdf"), key=lambda p: p.stat().st_mtime, reverse=True)
-    for old in files[keep - 1:]:
-        old.unlink(missing_ok=True)
+def rotate_outputs(out_dir: Path, prefix: str, keep: int = 10,
+                   exts: tuple[str, ...] = (".pdf",)) -> None:
+    for ext in exts:
+        files = sorted(out_dir.glob(f"{prefix}_*{ext}"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for old in files[keep - 1:]:
+            old.unlink(missing_ok=True)

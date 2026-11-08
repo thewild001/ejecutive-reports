@@ -9,30 +9,37 @@ tareas atrasadas y recomendaciones accionables.
 from __future__ import annotations
 
 import datetime
+import logging
 import sys
 from collections import Counter
 from pathlib import Path
 
-import httpx
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from common.settings import load_config, require_env
-from common.pdfbase import ReportPDF
 from common.delivery import deliver
 from common.settings import rotate_outputs
+from common.cache import ApiCache
+from common.exporters import export_rows
+from common.http_client import ApiError, build_client, checked_json
+from common.plugins import load_plugins, run_hook
+from gespro.analytics import analyze_trends
+
+log = logging.getLogger(__name__)
 
 
 class RedmineAPI:
-    def __init__(self, base_url: str, api_key: str, verify_ssl: bool = False):
-        self.client = httpx.Client(
-            base_url=base_url.rstrip("/"), verify=verify_ssl, timeout=30.0,
+    def __init__(self, base_url: str, api_key: str, verify_ssl: bool = False,
+                 timeout: float = 30.0, cache=None):
+        self.cache = cache
+        self.client = build_client(
+            base_url,
             headers={"X-Redmine-API-Key": api_key, "Content-Type": "application/json"},
+            verify_ssl=verify_ssl,
+            timeout=timeout,
         )
 
     def _get(self, path, params=None):
-        resp = self.client.get(path, params=params)
-        resp.raise_for_status()
-        return resp.json()
+        return checked_json(self.client, path, params, cache=self.cache)
 
     def paginate(self, path, key, params=None, limit=100):
         params = dict(params or {}, limit=limit)
@@ -56,7 +63,8 @@ class RedmineAPI:
     def memberships(self, pid):
         try:
             return self._get(f"/projects/{pid}/memberships.json", {"limit": 100}).get("memberships", [])
-        except httpx.HTTPStatusError:
+        except ApiError:
+            log.warning("Memberships no disponibles para el proyecto %s", pid)
             return []
 
     def issues(self, pid, limit=200):
@@ -80,11 +88,11 @@ def is_overdue(issue: dict, closed_names: set) -> bool:
         return False
 
 
-def collect(rm: RedmineAPI, pid: int, closed_names: set) -> dict | None:
+def collect(rm: RedmineAPI, pid: int, closed_names: set, period_days: int = 30) -> dict | None:
     try:
         proj = rm.project(pid)
     except Exception as e:
-        print(f"  [WARN] Proyecto {pid}: {e}")
+        log.warning("Proyecto %s: %s", pid, e)
         return None
 
     members = []
@@ -99,6 +107,7 @@ def collect(rm: RedmineAPI, pid: int, closed_names: set) -> dict | None:
     try:
         issues = rm.issues(pid)
     except Exception:
+        log.warning("Issues no disponibles para el proyecto %s", pid)
         issues = []
 
     status_counts = Counter(field_name(i, "status") for i in issues)
@@ -125,97 +134,87 @@ def collect(rm: RedmineAPI, pid: int, closed_names: set) -> dict | None:
         "closed": total - total_open,
         "overdue": total_overdue,
         "health": (total - total_open) / total * 100 if total else 0.0,
+        "analytics": analyze_trends(issues, members, closed_names, period_days),
     }
 
 
-def build_pdf(projects: list[dict], cfg: dict, out_path: Path) -> None:
-    pdf = ReportPDF(cfg["company"], "Informe de Estado de Proyectos")
-    pdf.cover("Seguimiento y salud del portafolio de proyectos")
+def summary_table(projects: list[dict]) -> tuple[list[str], list[list]]:
+    """Tabla del resumen ejecutivo — compartida entre PDF y exports (Fase 3)."""
+    headers = ["Proyecto", "Tareas", "Abiertas", "Cerradas", "Vencidas", "Avance %"]
+    data = [[p["name"][:38], p["total"], p["open"], p["closed"], p["overdue"],
+             f"{p['health']:.1f}"] for p in projects]
+    return headers, data
 
-    # Resumen ejecutivo
-    pdf.add_page()
-    pdf.section("1. Resumen ejecutivo")
-    total = sum(p["total"] for p in projects)
-    opened = sum(p["open"] for p in projects)
-    overdue = sum(p["overdue"] for p in projects)
-    members = len({m["id"] for p in projects for m in p["members"]})
-    pct = round(opened / total * 100, 1) if total else 0
-    pdf.para(
-        f"Se analizaron {len(projects)} proyectos con un total de {total} tareas registradas: "
-        f"{opened} abiertas ({pct}%) y {overdue} vencidas. "
-        f"Participan {members} miembros asignados en los proyectos."
-    )
-    pdf.table(
-        ["Proyecto", "Tareas", "Abiertas", "Cerradas", "Vencidas", "Avance %"],
-        [[p["name"][:38], p["total"], p["open"], p["closed"], p["overdue"], f"{p['health']:.1f}"] for p in projects],
-        widths=[64, 22, 22, 22, 25, 25],
-    )
 
-    # Detalle por proyecto
-    for idx, p in enumerate(projects, start=1):
-        pdf.add_page()
-        pdf.section(f"Proyecto {idx}: {p['name']}")
-        if p["description"]:
-            pdf.para(p["description"][:600], size=9)
-        pdf.kv_row("Tareas totales / abiertas / cerradas", f"{p['total']} / {p['open']} / {p['closed']}")
-        pdf.kv_row("Tareas vencidas", str(p["overdue"]))
-        pdf.kv_row("Tasa de cierre (salud)", f"{p['health']:.1f}%")
-        if p["status_counts"]:
-            pdf.ln(2)
-            pdf.para("Distribución por estado: " + ", ".join(f"{k}: {v}" for k, v in p["status_counts"].most_common()), size=9)
-        if p["members"]:
-            pdf.ln(2)
-            pdf.section("Carga de trabajo por miembro")
-            pdf.table(
-                ["Miembro", "Rol(es)", "Total", "Abiertas", "Vencidas"],
-                [[m["name"][:32], ", ".join(m["roles"])[:30], m["total"], m["open"], m["overdue"]] for m in p["members"]],
-                widths=[55, 55, 22, 24, 24],
-            )
+def build_pdf(projects: list[dict], cfg: dict, out_path: Path,
+              deltas: list[str] | None = None) -> None:
+    from gespro.detailed_pdf import build_detailed_pdf
 
-        # Análisis automático
-        pdf.section("Análisis y recomendaciones")
-        if p["health"] >= 70 and p["overdue"] == 0:
-            pdf.bullet("Salud del proyecto satisfactoria. Mantener la cadencia de cierre actual.")
-        if p["overdue"] > 0:
-            pdf.bullet(f"Atender las {p['overdue']} tareas vencidas: replanificar o reasignar antes de la próxima revisión.")
-        if p["open"] > p["closed"] and p["total"] > 10:
-            pdf.bullet("Las tareas abiertas superan a las cerradas: revisar capacidad del equipo y prioridades del sprint.")
-        idle = [m for m in p["members"] if m["total"] == 0]
-        if idle:
-            pdf.bullet(f"Sin tareas asignadas: {', '.join(m['name'] for m in idle)}. Valorar redistribución de carga.")
-        overloaded = sorted((m for m in p["members"] if m["open"] > 0), key=lambda m: -m["open"])[:1]
-        if overloaded and overloaded[0]["open"] >= 5:
-            pdf.bullet(f"Mayor carga abierta: {overloaded[0]['name']} ({overloaded[0]['open']}). Considerar apoyo o delegación.")
-
-    pdf.output(str(out_path))
+    build_detailed_pdf(projects, cfg, out_path, deltas)
 
 
 def main() -> int:
     cfg = load_config()
     g = cfg.get("gespro", {})
     if not g.get("enabled"):
-        print("GESPRO deshabilitado en config.yaml"); return 0
+        log.info("GESPRO deshabilitado en config.yaml"); return 0
 
     api_key = require_env(g.get("api_key_env", "REDMINE_API_KEY"), "API key de Redmine/GESPRO")
-    rm = RedmineAPI(g["base_url"], api_key, verify_ssl=g.get("verify_ssl", False))
+    cache = ApiCache.from_config(cfg)
+    rm = RedmineAPI(g["base_url"], api_key, verify_ssl=g.get("verify_ssl", False),
+                    timeout=float(g.get("timeout_seconds", 30)), cache=cache)
 
     ids = g.get("project_ids") or []
     if not ids:
-        print("Sin project_ids configurados: se tomarán todos los proyectos visibles.")
+        log.info("Sin project_ids configurados: se tomarán todos los proyectos visibles.")
         ids = [p["id"] for p in rm.projects()]
 
-    print(f"Recolectando {len(ids)} proyectos desde {g['base_url']} ...")
-    projects = [d for pid in ids if (d := collect(rm, pid, set(g["closed_status_names"])))]
+    log.info("Recolectando %d proyectos desde %s ...", len(ids), g["base_url"])
+    closed = set(g["closed_status_names"])
+    days = int(g.get("previous_period_days", 30))
+    workers = int(cfg.get("execution", {}).get("max_workers", 4))
+    if workers > 1 and len(ids) > 1:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            collected = list(pool.map(lambda pid: collect(rm, pid, closed, days), ids))
+    else:
+        collected = [collect(rm, pid, closed, days) for pid in ids]
+    cache.close()
+    projects = [d for d in collected if d]
+
+    plugins = load_plugins(cfg)
+    for result in run_hook(plugins, "post_collect", "gespro", projects, cfg):
+        if result is not None:
+            projects = result
     if not projects:
-        print("ERROR: no se recolectó ningún proyecto."); return 1
+        log.error("No se recolectó ningún proyecto.")
+        return 1
 
     out_dir = cfg["output"]["dir"]
     stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
     prefix = g.get("filename_prefix", "informe_gespro")
     out_path = out_dir / f"{prefix}_{stamp}.pdf"
-    build_pdf(projects, cfg, out_path)
-    rotate_outputs(out_dir, prefix, cfg["output"].get("keep_last", 10))
-    print(f"PDF generado: {out_path}")
+
+    from common import snapshots
+    prev = snapshots.load(out_dir, prefix)
+    current = {p["name"]: {"open": p["open"], "closed": p["closed"],
+                           "overdue": p["overdue"], "health": round(p["health"], 1)}
+               for p in projects}
+    deltas = snapshots.diff(prev, current, {
+        "open": "abiertas", "closed": "cerradas",
+        "overdue": "vencidas", "health": "salud %",
+    })
+    snapshots.save(out_dir, prefix, current)
+
+    build_pdf(projects, cfg, out_path, deltas)
+    log.info("PDF generado: %s", out_path)
+
+    headers, data = summary_table(projects)
+    created = export_rows(headers, data, out_path,
+                          cfg.get("export", {}).get("formats", ["pdf"]))
+    run_hook(plugins, "post_export", "gespro", [out_path, *created], cfg)
+    exts = tuple(f".{f}" for f in cfg.get("export", {}).get("formats", ["pdf"]))
+    rotate_outputs(out_dir, prefix, cfg["output"].get("keep_last", 10), exts=exts)
 
     deliver(out_path, cfg, "Informe de Estado de Proyectos (GESPRO/Redmine)")
     return 0
