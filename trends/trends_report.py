@@ -36,10 +36,10 @@ IMPACT_LABEL = {"alto": "ALTO", "medio": "MEDIO", "bajo": "BAJO"}
 
 
 def build_pdf(data: dict, cfg: dict, out_path: Path) -> None:
-    from trends.premium_pdf import build_premium_pdf, is_premium_data
+    from trends.tech_trends_v2 import branding_from_config, build_report, is_v2_data
 
-    if is_premium_data(data):
-        build_premium_pdf(data, cfg, out_path)
+    if is_v2_data(data):
+        build_report(data, out_path, branding_from_config(cfg))
         return
 
     loc = cfg["company"].get("locale", "es")

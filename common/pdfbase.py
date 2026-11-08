@@ -33,6 +33,30 @@ def find_fonts() -> tuple[str, str] | tuple[None, None]:
     return None, None
 
 
+DEJAVU_FAMILIES = (
+    "DejaVuSans.ttf", "DejaVuSans-Bold.ttf",
+    "DejaVuSerif.ttf", "DejaVuSerif-Bold.ttf",
+    "DejaVuSansMono.ttf", "DejaVuSansMono-Bold.ttf",
+)
+
+
+def find_font_dir() -> str:
+    """Directorio con las 6 variantes DejaVu (Sans, Serif, Mono; normal y negrita).
+
+    Respeta REPORTS_FONTS_DIR. Falla con un mensaje accionable si no hay ninguno.
+    """
+    import os
+
+    extra = os.environ.get("REPORTS_FONTS_DIR")
+    for d in ([extra] if extra else []) + FONT_CANDIDATES:
+        if d and all((Path(d) / name).is_file() for name in DEJAVU_FAMILIES):
+            return d
+    raise SystemExit(
+        "ERROR: no se encontraron las fuentes DejaVu (Sans, Serif, Mono). Instala "
+        "fonts-dejavu-core/fonts-dejavu-extra o define REPORTS_FONTS_DIR."
+    )
+
+
 class ReportPDF(FPDF):
     """Base PDF: header with company/unit, footer with page numbers and issuer."""
 
