@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # ── Modo stdio (default) ───────────────────────────────────────────────────
+  # Contenedor que duerme a la espera de `docker exec -i` desde un cliente MCP
+  # en el mismo host (ver README → "Integración con OpenCode", estrategia A).
+  #
+  # Uso:
+  #   docker compose up -d --build
+  #   docker exec -i gespro-mcp python3 main.py
+  #
+  gespro-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gespro-mcp
+    image: gespro-mcp:latest
+    restart: unless-stopped
+    env_file: ".env"
+    environment:
+      GESPRO_URL: ${GESPRO_URL}
+      GESPRO_API_KEY: ${GESPRO_API_KEY}
+      GESPRO_VERIFY_SSL: ${GESPRO_VERIFY_SSL:-true}
+      GESPRO_TIMEOUT: ${GESPRO_TIMEOUT:-30.0}
+      GESPRO_DEFAULT_LIMIT: ${GESPRO_DEFAULT_LIMIT:-50}
+      GESPRO_PROJECT_FILTER: ${GESPRO_PROJECT_FILTER:-}
+    stdin_open: true
+    tty: true
+    # El contenedor queda dormido; el cliente MCP entra con docker exec -i:
+    entrypoint: ["sleep", "infinity"]
+
+  # ── Modo SSE (alternativa) ─────────────────────────────────────────────────
+  # Expone el MCP como servidor HTTP en el puerto 8000.
+  # Cliente MCP apunta a http://<host>:8000/sse
+  # Descomentar este servicio y comentar el de arriba.
+  #
+  # gespro-mcp-sse:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: gespro-mcp-sse
+  #   image: gespro-mcp:latest
+  #   restart: unless-stopped
+  #   env_file: ".env"
+  #   environment:
+  #     GESPRO_URL: ${GESPRO_URL}
+  #     GESPRO_API_KEY: ${GESPRO_API_KEY}
+  #     GESPRO_VERIFY_SSL: ${GESPRO_VERIFY_SSL:-true}
+  #     GESPRO_TIMEOUT: ${GESPRO_TIMEOUT:-30.0}
+  #     GESPRO_DEFAULT_LIMIT: ${GESPRO_DEFAULT_LIMIT:-50}
+  #     GESPRO_PROJECT_FILTER: ${GESPRO_PROJECT_FILTER:-}
+  #   command: ["--transport", "sse", "--host", "0.0.0.0", "--port", "8000"]
+  #   ports:
+  #     - "8000:8000"

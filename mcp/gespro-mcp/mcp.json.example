@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "gespro-mcp": {
+      "command": "python",
+      "args": ["main.py"],
+      "cwd": "/ruta/absoluta/a/gespro-mcp",
+      "env": {
+        "GESPRO_URL": "https://redmine.example.com/",
+        "GESPRO_API_KEY": "",
+        "GESPRO_VERIFY_SSL": "true",
+        "GESPRO_TIMEOUT": "30.0",
+        "GESPRO_DEFAULT_LIMIT": "50"
+      }
+    }
+  }
+}

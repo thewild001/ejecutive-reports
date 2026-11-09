@@ -338,7 +338,7 @@ def analizar_rendimiento_pipelines(project_id: str, limit: int = 50) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 
 @mcp.tool()
-def detectar_ramas_stale(project_id: str, days_threshold: int = 60) -> str:
+def detectar_ramas_stale(project_id: st º   º12*/0. ys_threshold: int = 60) -> str:
     """
     Identifica ramas inactivas (stale) que no han recibido commits recientemente.
     Ayuda a evaluar la acumulación de deuda técnica o código abandonado.
