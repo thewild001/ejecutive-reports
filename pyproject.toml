@@ -9,10 +9,10 @@ dependencies = [
     "PyYAML>=6.0",
     "pydantic>=2.0",
     "matplotlib>=3.8",   # gráficos del informe GitLab (aprobado por el usuario)
-    "python-gitlab>=4.0", # servidor MCP de analítica (mcp/gitlab_server.py)
+    "python-gitlab>=4.0", # servidor MCP de analítica (mcp/gitlab-mcp)
     "pandas>=2.0",
     "python-dateutil>=2.8",
-    "mcp>=1.2,<2",       # mcp 2.x renombró FastMCP y rompe el servidor
+    "fastmcp>=2.0.0",    # servidor MCP (mcp/gitlab-mcp)
 ]
 
 [project.scripts]

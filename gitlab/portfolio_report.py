@@ -8,7 +8,7 @@ grupo GitLab. Es el generador "heredado" (fuente de la verdad del formato)
 parametrizado: ninguna organización, host, grupo ni ruta vive en el código.
 
 Datos: se obtienen de las herramientas del servidor MCP de analítica GitLab
-(mcp/gitlab_server.py, por stdio). El comando es configurable
+(mcp/gitlab-mcp, por stdio). El comando es configurable
 (`gitlab.mcp_command`) para poder apuntar, p. ej., a un contenedor Docker.
 
 Configuración (config.yaml → gitlab.*, company.*): ver common/config_models.py.
@@ -17,15 +17,19 @@ scripts/run_gitlab_ejecutive_report.sh → run_report.sh).
 """
 from __future__ import annotations
 
+import collections
 import datetime
 import json
 import logging
 import os
+import queue
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -77,8 +81,11 @@ S = PortfolioSettings()
 
 
 def default_mcp_command() -> list[str]:
-    return [sys.executable, str(REPORTS_ROOT / "mcp" / "gitlab_server.py"),
-            "--transport", "stdio"]
+    """python mcp/gitlab-mcp/main.py (usa el .venv del servidor si existe)."""
+    server_dir = REPORTS_ROOT / "mcp" / "gitlab-mcp"
+    venv_py = server_dir / ".venv" / "bin" / "python"
+    py = str(venv_py) if venv_py.is_file() else sys.executable
+    return [py, str(server_dir / "main.py"), "--transport", "stdio"]
 
 
 def settings_from_config(cfg: dict) -> PortfolioSettings:
@@ -140,52 +147,124 @@ def health_label(score):
 # ══════════════════════════════════════════════════════════════════════
 # 2 · CLIENTE MCP
 # ══════════════════════════════════════════════════════════════════════
-def mcp_call(tool_name, args=None, timeout=None):
-    """Invoca una tool MCP por stdio y devuelve su texto (None si falla)."""
-    args = args or {}
-    timeout = timeout or S.mcp_timeout
-    msgs = [
-        json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize",
-                    "params": {"protocolVersion": "2024-11-05",
-                               "capabilities": {},
-                               "clientInfo": {"name": "reports-gitlab",
-                                              "version": "1.0"}}}),
-        json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
-                    "params": {"name": tool_name, "arguments": args}}),
-    ]
-    payload = "\n".join(msgs) + "\n"
-    try:
-        proc = subprocess.run(S.mcp_command, input=payload, capture_output=True,
-                              text=True, timeout=timeout, cwd=str(REPORTS_ROOT))
-    except subprocess.TimeoutExpired:
-        log.warning("MCP %s: tiempo de espera agotado (%ss)", tool_name, timeout)
-        return None
-    except OSError as exc:
-        log.error("No se pudo lanzar el servidor MCP %s: %s", S.mcp_command[:1], exc)
+class McpSession:
+    """Cliente MCP por stdio: un único proceso para todas las llamadas.
+
+    Handshake completo (initialize → notifications/initialized → tools/call) y
+    stdin abierto hasta recibir cada respuesta: los servidores FastMCP cierran la
+    conexión si el cliente corta stdin antes de que termine la llamada.
+    """
+
+    def __init__(self, command: list[str] | None = None, timeout: float | None = None):
+        self.command = command or S.mcp_command
+        self.timeout = timeout or S.mcp_timeout
+        self._proc = None
+        self._lines: "queue.Queue[str | None]" = queue.Queue()
+        self._stderr: collections.deque[str] = collections.deque(maxlen=20)
+        self._id = 0
+
+    # -- ciclo de vida --
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+    def close(self):
+        proc, self._proc = self._proc, None
+        if not proc:
+            return
+        try:
+            proc.stdin.close()
+        except OSError:
+            pass
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+
+    def _pump_stdout(self, stream):
+        for line in iter(stream.readline, ""):
+            self._lines.put(line)
+        self._lines.put(None)  # EOF: el proceso terminó
+
+    def _pump_stderr(self, stream):
+        for line in iter(stream.readline, ""):
+            self._stderr.append(line)
+
+    def _start(self):
+        self._lines = queue.Queue()
+        self._proc = subprocess.Popen(
+            self.command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, text=True, cwd=str(REPORTS_ROOT))
+        threading.Thread(target=self._pump_stdout, args=(self._proc.stdout,), daemon=True).start()
+        threading.Thread(target=self._pump_stderr, args=(self._proc.stderr,), daemon=True).start()
+        self._request("initialize", {"protocolVersion": "2024-11-05", "capabilities": {},
+                                     "clientInfo": {"name": "reports-gitlab", "version": "1.0"}})
+        self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+
+    # -- protocolo --
+    def _send(self, obj):
+        self._proc.stdin.write(json.dumps(obj) + "\n")
+        self._proc.stdin.flush()
+
+    def _request(self, method, params):
+        self._id += 1
+        rid = self._id
+        self._send({"jsonrpc": "2.0", "id": rid, "method": method, "params": params})
+        deadline = time.monotonic() + self.timeout
+        while True:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                raise TimeoutError(f"{method}: sin respuesta en {self.timeout:.0f}s")
+            try:
+                line = self._lines.get(timeout=left)
+            except queue.Empty:
+                raise TimeoutError(f"{method}: sin respuesta en {self.timeout:.0f}s") from None
+            if line is None:
+                raise ConnectionError("el servidor MCP cerró la conexión")
+            try:
+                msg = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if msg.get("id") == rid:
+                return msg
+
+    def call(self, tool_name: str, args: dict | None = None):
+        """Texto devuelto por la tool, o None si falla (se registra el motivo)."""
+        try:
+            if self._proc is None or self._proc.poll() is not None:
+                self._start()
+            msg = self._request("tools/call", {"name": tool_name, "arguments": args or {}})
+        except (OSError, TimeoutError, ConnectionError) as exc:
+            tail = " | ".join(x.strip() for x in list(self._stderr)[-2:] if x and x.strip())
+            log.warning("MCP %s: %s%s", tool_name, exc, f" ({tail})" if tail else "")
+            self.close()
+            return None
+        if "error" in msg:
+            log.warning("MCP %s: %s", tool_name, msg["error"].get("message", msg["error"]))
+            return None
+        res = msg.get("result") or {}
+        if res.get("isError"):
+            detail = " ".join(i.get("text", "") for i in res.get("content", []))[:200]
+            log.warning("MCP %s devolvió error: %s", tool_name, detail)
+            return None
+        for item in res.get("content", []):
+            if item.get("type") == "text":
+                return item.get("text", "")
         return None
 
-    for line in proc.stdout.strip().splitlines():
-        if not line:
-            continue
-        try:
-            data = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if data.get("id") != 2 or "result" not in data:
-            continue
-        res = data["result"]
-        if isinstance(res, dict) and res.get("isError"):
-            log.warning("MCP %s devolvió error", tool_name)
-            return None
-        if isinstance(res, dict) and "content" in res:
-            for item in res["content"]:
-                if item.get("type") == "text":
-                    return item.get("text", "")
-        return None if res is None else str(res)
-    if proc.returncode:
-        log.warning("MCP %s terminó con código %s: %s", tool_name, proc.returncode,
-                    (proc.stderr or "").strip().splitlines()[-1:] or "")
-    return None
+
+_SESSION: McpSession | None = None
+
+
+def mcp_call(tool_name, args=None, timeout=None):
+    """Invoca una tool MCP (sesión compartida si hay una activa; si no, de un solo uso)."""
+    if _SESSION is not None:
+        return _SESSION.call(tool_name, args)
+    with McpSession(timeout=timeout) as one_shot:
+        return one_shot.call(tool_name, args)
 
 
 def _tools():
@@ -1361,15 +1440,21 @@ def collect(projects: dict[str, str]):
     Devuelve (portafolio, grupo). Un proyecto sin datos de salud se omite
     (si no, aparecería como "CRÍTICO 0/100", un falso positivo enviado por correo).
     """
-    group = parse_group_health(gather_group_health())
-    portfolio = []
-    for i, (name, pid) in enumerate(projects.items(), 1):
-        log.info("[%d/%d] %s (%s)", i, len(projects), name, pid)
-        p = build_project_metrics(name, pid)
-        if not p["score"] and p["branches"] == 0 and p["last_commit"] == "N/A":
-            log.warning("Sin datos de salud para %s: se omite del informe", pid)
-            continue
-        portfolio.append(p)
+    global _SESSION
+    with McpSession() as session:
+        _SESSION = session
+        try:
+            group = parse_group_health(gather_group_health())
+            portfolio = []
+            for i, (name, pid) in enumerate(projects.items(), 1):
+                log.info("[%d/%d] %s (%s)", i, len(projects), name, pid)
+                p = build_project_metrics(name, pid)
+                if not p["score"] and p["branches"] == 0 and p["last_commit"] == "N/A":
+                    log.warning("Sin datos de salud para %s: se omite del informe", pid)
+                    continue
+                portfolio.append(p)
+        finally:
+            _SESSION = None
     return portfolio, group
 
 

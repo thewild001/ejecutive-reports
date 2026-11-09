@@ -12,7 +12,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 COPY pyproject.toml ./
-RUN uv pip install --system --no-cache "fpdf2>=2.7" "httpx>=0.27" "PyYAML>=6.0" "pydantic>=2.0" "matplotlib>=3.8" "python-gitlab>=4.0" "pandas>=2.0" "python-dateutil>=2.8" "mcp>=1.2,<2"
+RUN uv pip install --system --no-cache "fpdf2>=2.7" "httpx>=0.27" "PyYAML>=6.0" "pydantic>=2.0" "matplotlib>=3.8" "python-gitlab>=4.0" "pandas>=2.0" "python-dateutil>=2.8" "fastmcp>=2.0.0"
 
 COPY . .
 

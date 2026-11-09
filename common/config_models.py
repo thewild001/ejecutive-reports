@@ -95,7 +95,7 @@ class GitlabConfig(_Base):
     group_max_projects: int = Field(default=30, ge=1, le=500)
     group_min_activity_days: int = Field(default=90, ge=1)
     classification: str = ""                              # pie de página, p. ej. "USO INTERNO"
-    # Comando del servidor MCP (stdio). Vacío = python mcp/gitlab_server.py --transport stdio.
+    # Comando del servidor MCP (stdio). Vacío = python mcp/gitlab-mcp/main.py --transport stdio.
     # Ej. Docker: ["docker","exec","-i","<contenedor>","python3","<server.py>","--transport","stdio"]
     mcp_command: list[str] = Field(default_factory=list)
     mcp_timeout_seconds: float = Field(default=90.0, gt=0, le=900)

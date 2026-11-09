@@ -1,0 +1,52 @@
+services:
+  # ── Modo stdio (default) ───────────────────────────────────────────────────
+  # Contenedor que duerme a la espera de `docker exec -i` desde un cliente MCP
+  # en el mismo host (ver README → "Integración con OpenCode", estrategia A).
+  #
+  # Uso:
+  #   docker compose up -d --build
+  #   docker exec -i gitlab-mcp python3 main.py
+  #
+  gitlab-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gitlab-mcp
+    image: gitlab-mcp:latest
+    restart: unless-stopped
+    env_file: ".env"
+    environment:
+      GITLAB_URL: ${GITLAB_URL:-https://gitlab.com}
+      GITLAB_TOKEN: ${GITLAB_TOKEN}
+      GITLAB_VERIFY_SSL: ${GITLAB_VERIFY_SSL:-true}
+      GITLAB_TIMEOUT: ${GITLAB_TIMEOUT:-30.0}
+      GITLAB_DEFAULT_LIMIT: ${GITLAB_DEFAULT_LIMIT:-50}
+      GITLAB_PROJECT_FILTER: ${GITLAB_PROJECT_FILTER:-}
+    stdin_open: true
+    tty: true
+    # El contenedor queda dormido; el cliente MCP entra con docker exec -i:
+    entrypoint: ["sleep", "infinity"]
+
+  # ── Modo SSE (alternativa) ─────────────────────────────────────────────────
+  # Expone el MCP como servidor HTTP en el puerto 8000.
+  # Cliente MCP apunta a http://<host>:8000/sse
+  # Descomentar este servicio y comentar el de arriba.
+  #
+  # gitlab-mcp-sse:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: gitlab-mcp-sse
+  #   image: gitlab-mcp:latest
+  #   restart: unless-stopped
+  #   env_file: ".env"
+  #   environment:
+  #     GITLAB_URL: ${GITLAB_URL:-https://gitlab.com}
+  #     GITLAB_TOKEN: ${GITLAB_TOKEN}
+  #     GITLAB_VERIFY_SSL: ${GITLAB_VERIFY_SSL:-true}
+  #     GITLAB_TIMEOUT: ${GITLAB_TIMEOUT:-30.0}
+  #     GITLAB_DEFAULT_LIMIT: ${GITLAB_DEFAULT_LIMIT:-50}
+  #     GITLAB_PROJECT_FILTER: ${GITLAB_PROJECT_FILTER:-}
+  #   command: ["--transport", "sse", "--host", "0.0.0.0", "--port", "8000"]
+  #   ports:
+  #     - "8000:8000"
