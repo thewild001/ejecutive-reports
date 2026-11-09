@@ -19,6 +19,8 @@ CLEAN = [
     ROOT / "trends" / "tech_trends_v2.py",
     ROOT / "trends" / "trends_report.py",
     ROOT / "trends" / "rss_fetcher.py",
+    ROOT / "gitlab" / "portfolio_report.py",
+    ROOT / "gitlab" / "gitlab_report.py",
     ROOT / "cli.py",
     ROOT / "run.sh",
     *sorted((ROOT / "scripts").glob("*.sh")),

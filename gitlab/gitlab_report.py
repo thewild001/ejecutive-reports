@@ -139,11 +139,75 @@ def build_pdf(rows: list[dict], cfg: dict, out_path: Path,
     build_executive_pdf(rows, cfg, out_path, deltas)
 
 
+def portfolio_projects(api: GitLabAPI | None, g: dict) -> dict[str, str]:
+    """{nombre_visible: ruta_completa} desde `gitlab.projects` o descubiertos por la API."""
+    explicit = g.get("projects") or []
+    if isinstance(explicit, dict):
+        return {str(k): str(v) for k, v in explicit.items()}
+    if explicit:
+        return {str(path).rstrip("/").split("/")[-1]: str(path) for path in explicit}
+    found = api.projects(g.get("group") or None, int(g.get("max_projects", 25)))
+    names: dict[str, str] = {}
+    for p in found:
+        path = p.get("path_with_namespace", "")
+        if not path:
+            continue
+        key = p.get("path") or path.split("/")[-1]
+        names[key if key not in names else path] = path  # colisión → ruta completa
+    return names
+
+
+def main_portfolio(cfg: dict, g: dict) -> int:
+    """Resumen ejecutivo consolidado (formato heredado) vía servidor MCP."""
+    from gitlab import portfolio_report as pr
+
+    api = None
+    if not g.get("projects"):
+        token = require_env(g.get("token_env", "GITLAB_TOKEN"), "token de GitLab")
+        api = GitLabAPI(g["base_url"], token, verify_ssl=g.get("verify_ssl", False),
+                        timeout=float(g.get("timeout_seconds", 30)))
+    projects = portfolio_projects(api, g)
+    if not projects:
+        log.error("No hay proyectos que analizar (gitlab.projects vacío y la API no devolvió ninguno)")
+        return pr.EXIT_NO_DATA
+
+    pr.configure(cfg)
+    log.info("Consultando %d proyectos vía MCP (ventana %d días) ...", len(projects),
+             pr.S.window_days)
+    portfolio, group = pr.collect(projects)
+    if not portfolio:
+        log.error("El MCP no devolvió datos de ningún proyecto: no se genera ni envía el informe")
+        return pr.EXIT_NO_DATA
+
+    out_dir = cfg["output"]["dir"]
+    stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+    prefix = g.get("filename_prefix", "informe_gitlab")
+    out_path = out_dir / f"{prefix}_{stamp}.pdf"
+    pages = pr.build_portfolio_pdf(portfolio, group, out_path)
+    log.info("PDF generado: %s (%d páginas, %d/%d proyectos)", out_path, pages,
+             len(portfolio), len(projects))
+
+    headers, data = pr.summary_rows(portfolio)
+    created = export_rows(headers, data, out_path,
+                          cfg.get("export", {}).get("formats", ["pdf"]))
+    plugins = load_plugins(cfg)
+    run_hook(plugins, "post_export", "gitlab", [out_path, *created], cfg)
+    exts = tuple(f".{f}" for f in cfg.get("export", {}).get("formats", ["pdf"]))
+    rotate_outputs(out_dir, prefix, cfg["output"].get("keep_last", 10), exts=exts)
+
+    results = deliver(out_path, cfg, "Resumen Ejecutivo de Proyectos GitLab",
+                      report_key="gitlab")
+    return delivery_exit_code(results)
+
+
 def main() -> int:
     cfg = load_config()
     g = cfg.get("gitlab", {})
     if not g.get("enabled"):
         log.info("GitLab deshabilitado en config.yaml"); return 0
+
+    if g.get("mode", "portfolio") == "portfolio":
+        return main_portfolio(cfg, g)
 
     token = require_env(g.get("token_env", "GITLAB_TOKEN"), "token de GitLab")
     cache = ApiCache.from_config(cfg)

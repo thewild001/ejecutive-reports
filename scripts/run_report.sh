@@ -90,6 +90,7 @@ case "$RC" in
   3) log "FIN con error: falló al menos un canal de entrega (código 3)" ;;
   4) log "FIN con error: no hay canales de entrega habilitados (código 4)" ;;
   5) log "FIN con error: datos desactualizados, no se generó el boletín (código 5)" ;;
+  6) log "FIN con error: el MCP no devolvió datos, no se generó el informe (código 6)" ;;
   *) log "FIN con error (código $RC)" ;;
 esac
 exit "$RC"

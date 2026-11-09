@@ -5,6 +5,7 @@
 # El wrapper sale con código distinto de 0 si algo falla:
 #   3 = falló un canal de entrega · 4 = no hay canales habilitados
 #   5 = datos de tendencias desactualizados (trends.max_age_days)
+#   6 = GitLab: el servidor MCP no devolvió datos (no se envía un informe vacío)
 # y escribe su registro en logs/<reporte>.log. Para recibir aviso de fallos con
 # el correo local del servidor, define MAILTO (cron envía la salida de errores).
 #

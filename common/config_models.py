@@ -87,11 +87,33 @@ class GitlabConfig(_Base):
     activity_days: int = Field(default=90, ge=7, le=365)
     filename_prefix: str = "informe_gitlab"
     timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+    # "portfolio" = resumen ejecutivo consolidado vía MCP (formato heredado);
+    # "summary" = tabla resumida por REST (modo ligero, sin dependencias extra).
+    mode: str = "portfolio"
+    # Proyectos del portafolio: lista de rutas o {nombre: ruta}. Vacío = descubrir
+    # los del grupo por la API (hasta max_projects).
+    projects: list[str] | dict[str, str] = Field(default_factory=list)
+    window_days: int = Field(default=2, ge=1, le=365)    # actividad reciente (colaboradores)
+    trend_months: int = Field(default=12, ge=3, le=36)   # serie mensual de tendencia
+    group_max_projects: int = Field(default=30, ge=1, le=500)
+    group_min_activity_days: int = Field(default=90, ge=1)
+    classification: str = ""                              # pie de página, p. ej. "USO INTERNO"
+    # Comando del servidor MCP (stdio). Vacío = python mcp/gitlab_server.py --transport stdio.
+    # Ej. Docker: ["docker","exec","-i","<contenedor>","python3","<server.py>","--transport","stdio"]
+    mcp_command: list[str] = Field(default_factory=list)
+    mcp_timeout_seconds: float = Field(default=90.0, gt=0, le=900)
 
     @field_validator("base_url")
     @classmethod
     def _url(cls, v: str) -> str:
         return _check_url(v) if v else v
+
+    @field_validator("mode")
+    @classmethod
+    def _mode(cls, v: str) -> str:
+        if v not in {"portfolio", "summary"}:
+            raise ValueError("mode debe ser 'portfolio' o 'summary'")
+        return v
 
 
 class TrendsConfig(_Base):
