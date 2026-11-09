@@ -20,6 +20,8 @@ CLEAN = [
     ROOT / "trends" / "trends_report.py",
     ROOT / "trends" / "rss_fetcher.py",
     ROOT / "gitlab" / "portfolio_report.py",
+    ROOT / "gespro" / "status_report.py",
+    ROOT / "gespro" / "gespro_report.py",
     ROOT / "gitlab" / "gitlab_report.py",
     ROOT / "cli.py",
     ROOT / "run.sh",

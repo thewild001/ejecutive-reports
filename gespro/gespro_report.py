@@ -134,6 +134,8 @@ def collect(rm: RedmineAPI, pid: int, closed_names: set, period_days: int = 30) 
         "closed": total - total_open,
         "overdue": total_overdue,
         "health": (total - total_open) / total * 100 if total else 0.0,
+        "open_by_status": dict(Counter(field_name(i, "status") for i in issues
+                                       if field_name(i, "status").lower() not in closed_names)),
         "analytics": analyze_trends(issues, members, closed_names, period_days),
     }
 
@@ -148,6 +150,12 @@ def summary_table(projects: list[dict]) -> tuple[list[str], list[list]]:
 
 def build_pdf(projects: list[dict], cfg: dict, out_path: Path,
               deltas: list[str] | None = None) -> None:
+    if cfg.get("gespro", {}).get("mode", "status") == "status":
+        from gespro import status_report
+
+        status_report.configure(cfg)
+        status_report.generate_pdf(projects, out_path)
+        return
     from gespro.detailed_pdf import build_detailed_pdf
 
     build_detailed_pdf(projects, cfg, out_path, deltas)

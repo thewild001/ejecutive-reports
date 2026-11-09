@@ -67,11 +67,23 @@ class GesproConfig(_Base):
     previous_period_days: int = Field(default=30, ge=7, le=180)
     filename_prefix: str = "informe_gespro"
     timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+    # "status" = informe de estado heredado (fuente de la verdad); "detailed" = variante con analítica de tendencias.
+    mode: str = "status"
+    system_name: str = "GESPRO"
+    new_status_names: list[str] = Field(default_factory=lambda: ["Nueva", "New"])
+    in_progress_status_names: list[str] = Field(default_factory=lambda: ["Ejecución", "In Progress"])
 
     @field_validator("base_url")
     @classmethod
     def _url(cls, v: str) -> str:
         return _check_url(v) if v else v
+
+    @field_validator("mode")
+    @classmethod
+    def _mode(cls, v: str) -> str:
+        if v not in {"status", "detailed"}:
+            raise ValueError("mode debe ser 'status' o 'detailed'")
+        return v
 
 
 class GitlabConfig(_Base):
