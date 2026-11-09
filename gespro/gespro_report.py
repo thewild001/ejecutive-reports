@@ -150,15 +150,10 @@ def summary_table(projects: list[dict]) -> tuple[list[str], list[list]]:
 
 def build_pdf(projects: list[dict], cfg: dict, out_path: Path,
               deltas: list[str] | None = None) -> None:
-    if cfg.get("gespro", {}).get("mode", "status") == "status":
-        from gespro import status_report
+    from gespro import status_report
 
-        status_report.configure(cfg)
-        status_report.generate_pdf(projects, out_path)
-        return
-    from gespro.detailed_pdf import build_detailed_pdf
-
-    build_detailed_pdf(projects, cfg, out_path, deltas)
+    status_report.configure(cfg)
+    status_report.generate_pdf(projects, out_path, deltas)
 
 
 def main() -> int:

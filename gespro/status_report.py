@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Informe de estado de proyectos GESPRO/Redmine — formato heredado, genérico.
+Informe de estado de proyectos GESPRO/Redmine — formato heredado, genérico,
+enriquecido con la analítica de gespro/analytics.py (evolución por período,
+velocidad, cuellos de botella, tendencia de carga) y los cambios vs la ejecución anterior.
 
 Es el generador "heredado" (fuente de la verdad del formato: portada, resumen,
 detalle por proyecto con tabla de miembros, fortalezas/debilidades/sugerencias y
@@ -77,6 +79,8 @@ def adapt(p: dict) -> dict:
         "health_pct": pct, "health_label": label, "health_color": color,
         "status_counts": dict(p["status_counts"]),
         "open_by_status": dict(p.get("open_by_status", {})),
+        "overdue": p.get("overdue", 0),
+        "analytics": p.get("analytics") or {},
     }
 
 
@@ -124,6 +128,12 @@ def _analyze_weaknesses(proj):
         weaknesses.append(f"{len(critical)} miembro(s) con 3+ tareas atrasadas ({names}{'...' if len(critical) > 3 else ''}).")
     if proj["total_tasks"] == 0:
         weaknesses.append(f"Proyecto sin tareas registradas en {S.system}.")
+    an = proj.get("analytics") or {}
+    for b in an.get("bottlenecks", []):
+        weaknesses.append(f"Cuello de botella: {b['share']:.0f}% de las tareas abiertas están en '{b['status']}' ({b['count']}).")
+    growing = [n for n, t in (an.get("member_trends") or {}).items() if t == "creciente"]
+    if growing:
+        weaknesses.append(f"Carga creciente (abren más de lo que cierran) en: {', '.join(n.split()[0] for n in growing[:4])}{'...' if len(growing) > 4 else ''}.")
     new_count = _count_status(proj, S.new_status_names)
     if proj["total_tasks"] > 0 and new_count / max(proj["total_tasks"], 1) > 0.4:
         weaknesses.append(f"{new_count} tareas en estado inicial ('Nueva') ({new_count/max(proj['total_tasks'],1)*100:.0f}%), sin asignar.")
@@ -184,7 +194,7 @@ def _general_suggestions(all_projects, total_tasks_all, total_open_all, total_cl
     return recs
 
 
-def generate_pdf(all_projects, out_path):
+def generate_pdf(all_projects, out_path, deltas=None):
     """Compone el PDF de estado en `out_path` (formato heredado, genérico)."""
     all_projects = [adapt(p) for p in all_projects]
     org = S.company or "la organización"
@@ -308,6 +318,16 @@ def generate_pdf(all_projects, out_path):
     kv_line("Tareas cerradas", str(total_closed_all))
     if total_tasks_all > 0:
         kv_line("Avance global", f"{total_closed_all / total_tasks_all * 100:.1f}%")
+    kv_line("Tareas vencidas", str(sum(p["overdue"] for p in all_projects)))
+
+    if deltas:
+        pdf.ln(4)
+        pdf.set_font("DejaVu", "B", 11)
+        pdf.set_text_color(40, 80, 140)
+        pdf.cell(0, 7, "Cambios vs ejecución anterior", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(2)
+        for d in deltas:
+            bullet_item(d)
 
     pdf.ln(4)
     pdf.set_font("DejaVu", "B", 11)
@@ -407,6 +427,21 @@ def generate_pdf(all_projects, out_path):
         pdf.set_font("DejaVu", "B", 9)
         pdf.cell(badge_w, 7, badge, fill=True, align="C")
         pdf.set_y(y_end + 5)
+
+        # ── Evolución del período ──
+        an = proj.get("analytics") or {}
+        w = an.get("windows")
+        if w:
+            pdf.set_font("DejaVu", "B", 11)
+            pdf.set_text_color(40, 80, 140)
+            pdf.cell(0, 7, f"Evolución (últimos {w['days']} días vs {w['days']} previos)",
+                     new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.ln(1)
+            kv_line("Creadas", f"{w['created_current']} vs {w['created_previous']}")
+            kv_line("Cerradas", f"{w['closed_current']} vs {w['closed_previous']}")
+            if an.get("velocity") is not None:
+                kv_line("Velocidad (cerradas/semana)", str(an["velocity"]))
+            pdf.ln(3)
 
         # ── Tareas Abiertas ──
         if proj["open_by_status"]:

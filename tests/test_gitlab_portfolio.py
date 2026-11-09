@@ -19,7 +19,7 @@ FAKE = str(ROOT / "tests" / "fake_mcp_gitlab.py")
 
 
 def _cfg(tmp_path, **gitlab_over):
-    gl = {"enabled": True, "mode": "portfolio", "base_url": "https://git.example.org",
+    gl = {"enabled": True, "base_url": "https://git.example.org",
           "group": "acme", "projects": {"alfa": "acme/sub/alfa", "beta": "acme/beta"},
           "mcp_command": [sys.executable, FAKE, "--transport", "stdio"],
           "stale_branch_days": 45, "classification": "INTERNO"}
@@ -45,11 +45,11 @@ def test_pdf_usa_identidad_de_config_y_no_literales_del_codigo(tmp_path):
     pr.configure(cfg)
     portfolio, group = pr.collect(gitlab_report.portfolio_projects(None, cfg["gitlab"]))
     out = tmp_path / "x.pdf"
-    pages = pr.build_portfolio_pdf(portfolio, group, out)
+    pages = pr.build_portfolio_pdf(portfolio, group, out, deltas=["alfa: salud ↑3"])
     text = _text(out)
     assert pages >= 6
     for esperado in ("ACME", "Oficina BI", "git.example.org", "INTERNO",
-                     "últimos 2 días", ">45 días", "alfa", "Panorama del grupo acme"):
+                     "últimos 2 días", ">45 días", "alfa", "Panorama del grupo acme", "Cambios vs ejecución anterior"):
         assert esperado in text, esperado
     assert "FORTES" not in text.upper() and "uci.cu" not in text
 

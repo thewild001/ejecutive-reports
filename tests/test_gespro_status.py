@@ -31,7 +31,7 @@ class FakeRM:
 
 def _cfg(tmp_path):
     return {"company": {"name": "ACME", "unit": "Plataforma", "issued_by": "BI"},
-            "gespro": {"base_url": "https://pm.example.org", "mode": "status",
+            "gespro": {"base_url": "https://pm.example.org",
                        "closed_status_names": ["cerrada"], "system_name": "PM"},
             "output": {"dir": tmp_path}}
 
@@ -40,20 +40,12 @@ def test_pdf_estado_usa_identidad_de_config(tmp_path):
     cfg = _cfg(tmp_path)
     projects = [gespro_report.collect(FakeRM(), pid, {"cerrada"}, 30) for pid in (1, 2)]
     assert projects[0]["open_by_status"] == {"Nueva": 2, "Ejecución": 1}
+    assert projects[0]["analytics"]["windows"]["days"] == 30
     out = tmp_path / "e.pdf"
-    gespro_report.build_pdf(projects, cfg, out)
+    gespro_report.build_pdf(projects, cfg, out, deltas=["Portal 1: abiertas ↑2"])
     text = "\n".join(p.extract_text() for p in pypdf.PdfReader(str(out)).pages)
     for esperado in ("ACME", "pm.example.org", "Plataforma", "Fortalezas", "Debilidades",
                      "3. Resumen Ejecutivo Consolidado", "Recomendaciones para ACME",
-                     "Ana Pérez", "tareas en estado inicial"):
+                     "Ana Pérez", "tareas en estado inicial", "Cambios vs ejecución anterior", "Evolución (últimos 30 días"):
         assert esperado in text, esperado
     assert "FORTES" not in text.upper() and "GESPRO" not in text
-
-
-def test_modo_detallado_sigue_disponible(tmp_path):
-    cfg = _cfg(tmp_path)
-    cfg["gespro"]["mode"] = "detailed"
-    projects = [gespro_report.collect(FakeRM(), 1, {"cerrada"}, 30)]
-    out = tmp_path / "d.pdf"
-    gespro_report.build_pdf(projects, cfg, out)
-    assert out.stat().st_size > 1000

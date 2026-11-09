@@ -1464,6 +1464,6 @@ if __name__ == "__main__":
         mcp.run(transport=args.transport)
     except KeyboardInterrupt:
         log.info("Servidor detenido por el usuario.")
-    except Exception as e:
+    except Exception:
         log.exception("Error fatal en el servidor MCP")
         sys.exit(1)

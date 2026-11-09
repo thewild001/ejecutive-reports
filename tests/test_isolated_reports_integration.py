@@ -7,19 +7,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from gespro.detailed_pdf import (  # noqa: E402
-    analyze_strengths,
-    analyze_suggestions,
-    analyze_weaknesses,
-    build_detailed_pdf,
-    project_health,
-)
-from gitlab.executive_pdf import (  # noqa: E402
-    build_executive_pdf,
-    group_rows,
-    health_label,
-    health_score,
-)
 from trends.tech_trends_v2 import (  # noqa: E402
     auto_generate_summary,
     branding_from_config,
@@ -43,74 +30,6 @@ CFG = {
 }
 
 
-def _gespro_project() -> dict:
-    return {
-        "name": "Portal Académico",
-        "description": "Portal para gestión docente y consulta estudiantil.",
-        "members": [
-            {"name": "Ana Pérez", "roles": ["Desarrollo"], "total": 8, "open": 2, "closed": 6, "overdue": 1},
-            {"name": "Luis Díaz", "roles": [], "total": 0, "open": 0, "closed": 0, "overdue": 0},
-        ],
-        "status_counts": {"Nueva": 1, "En ejecución": 1, "Cerrada": 6},
-        "total": 8,
-        "open": 2,
-        "closed": 6,
-        "overdue": 1,
-        "health": 75.0,
-        "analytics": {
-            "windows": {"days": 30, "created_current": 4, "created_previous": 2,
-                         "closed_current": 3, "closed_previous": 2},
-            "velocity": 0.75,
-            "member_trends": {"Ana Pérez": "creciente"},
-            "bottlenecks": [],
-        },
-    }
-
-
-def _gitlab_rows() -> list[dict]:
-    today = "2026-09-14"
-    high = {
-        "name": "certifications",
-        "path": "fortes/certifications",
-        "last_activity": today,
-        "branches": 5,
-        "stale": 0,
-        "open_issues": 0,
-        "pipe_rate": 100.0,
-        "web_url": "https://gitlab.example.com/fortes/certifications",
-        "metrics": {
-            "mrs": {"mr_open": 1, "mr_merged": 9, "mr_merge_rate": 90.0,
-                    "mr_avg_review_days": 2.0},
-            "activity": {"commits": 12, "active_contributors": ["Ana"],
-                         "inactive_contributors": []},
-            "topics": ["fastapi"],
-        },
-    }
-    low = {
-        "name": "legacy-app",
-        "path": "fortes/legacy-app",
-        "last_activity": "2021-10-01",
-        "branches": 20,
-        "stale": 19,
-        "open_issues": 30,
-        "pipe_rate": 10.0,
-        "web_url": "https://gitlab.example.com/fortes/legacy-app",
-        "metrics": {"mrs": None, "activity": None, "topics": []},
-    }
-    other = {
-        "name": "subproject",
-        "path": "sigies/support",
-        "last_activity": today,
-        "branches": 3,
-        "stale": 1,
-        "open_issues": 2,
-        "pipe_rate": None,
-        "web_url": "",
-        "metrics": {},
-    }
-    return [high, low, other]
-
-
 def _premium_data() -> dict:
     return {
         "metadata": {"week": "2026-W38", "period": "Semana 38", "cutoff_date": "2026-09-14"},
@@ -130,47 +49,6 @@ def _premium_data() -> dict:
              "maturity": "EXPERIMENTAL", "impact_score": 76},
         ],
     }
-
-
-def test_gespro_analysis_and_pdf():
-    project = _gespro_project()
-    label, color = project_health(project)
-    assert label == "REGULAR"
-    assert color == (200, 160, 30)
-    strengths = analyze_strengths(project)
-    weaknesses = analyze_weaknesses(project)
-    suggestions = analyze_suggestions(project)
-    assert any("desempeño" in item.lower() for item in strengths)
-    assert any("venc" in item.lower() for item in weaknesses)
-    assert any(len(pair) == 2 for pair in suggestions)
-
-    with tempfile.TemporaryDirectory() as tmp:
-        out = Path(tmp) / "gespro.pdf"
-        build_detailed_pdf([project], CFG, out, deltas=["Portal Académico: abiertas ↑2"])
-        assert out.is_file()
-        assert out.stat().st_size > 4_000
-
-
-def test_gitlab_health_grouping_and_pdf():
-    rows = _gitlab_rows()
-    high_score = health_score(rows[0])
-    low_score = health_score(rows[1])
-    assert 0 <= high_score <= 100
-    assert 0 <= low_score <= 100
-    assert high_score > low_score
-    assert health_label(high_score) in {"BUENA", "REGULAR"}
-    assert health_label(low_score) == "CRÍTICA"
-
-    grouped = group_rows(rows)
-    assert "fortes" in grouped
-    assert "sigies" in grouped
-    assert len(grouped["fortes"]) == 2
-
-    with tempfile.TemporaryDirectory() as tmp:
-        out = Path(tmp) / "gitlab.pdf"
-        build_executive_pdf(rows, CFG, out, deltas=["certifications: ramas +1"])
-        assert out.is_file()
-        assert out.stat().st_size > 4_000
 
 
 def test_trends_premium_grouping_summary_and_pdf():

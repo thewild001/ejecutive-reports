@@ -1001,7 +1001,7 @@ def render_cover(pdf, totals, group):
              align="R")
 
 
-def render_exec_summary(pdf, totals):
+def render_exec_summary(pdf, totals, deltas=None):
     pdf.add_page()
     pdf.section_title("1", "Resumen Ejecutivo")
 
@@ -1038,6 +1038,12 @@ def render_exec_summary(pdf, totals):
     )
     for f in findings:
         pdf.bullet(f)
+
+    if deltas:
+        pdf.ln(3)
+        pdf.sub_title("Cambios vs ejecución anterior")
+        for d in deltas[:12]:
+            pdf.bullet(d)
 
     pdf.ln(3)
     pdf.sub_title("Distribución de alertas")
@@ -1328,14 +1334,14 @@ def render_methodology(pdf):
 # ══════════════════════════════════════════════════════════════════════
 # 8 · ORQUESTADOR
 # ══════════════════════════════════════════════════════════════════════
-def build_portfolio_pdf(portfolio, group, out_path):
+def build_portfolio_pdf(portfolio, group, out_path, deltas=None):
     """Compone el PDF en `out_path`. Devuelve el número de páginas."""
     totals = portfolio_totals(portfolio)
     try:
         charts = build_charts(portfolio, totals)
         pdf = PortfolioPDF()
         render_cover(pdf, totals, group)
-        render_exec_summary(pdf, totals)
+        render_exec_summary(pdf, totals, deltas)
         render_group_overview(pdf, group)
         render_portfolio_dashboard(pdf, portfolio, charts)
         render_alerts_section(pdf, totals)
@@ -1376,3 +1382,13 @@ def summary_rows(portfolio):
              p["stale"], p["last_commit"]]
             for p in sorted(portfolio, key=lambda x: x["score"], reverse=True)]
     return headers, rows
+
+
+SNAPSHOT_LABELS = {"score": "salud", "branches": "ramas", "stale": "ramas stale",
+                   "issues_open": "issues abiertos", "mrs_open": "MRs abiertos"}
+
+
+def snapshot_of(portfolio):
+    """{proyecto: métricas numéricas} para comparar con la ejecución anterior."""
+    return {p["name"]: {k: p[k] for k in SNAPSHOT_LABELS if isinstance(p.get(k), (int, float))}
+            for p in portfolio}
