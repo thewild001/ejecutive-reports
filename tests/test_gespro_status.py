@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 pypdf = pytest.importorskip("pypdf")
 
-from gespro import gespro_report, status_report  # noqa: E402
+from gespro import gespro_report  # noqa: E402
 
 
 class FakeRM:

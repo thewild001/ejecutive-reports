@@ -33,3 +33,7 @@ dist/
 # Logs y bases locales
 *.log
 *.db
+
+# Runtime del cron (scripts/run_report.sh)
+logs/
+.locks/
