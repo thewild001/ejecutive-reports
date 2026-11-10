@@ -154,14 +154,14 @@ Ver `crontab.example` con variantes local y Docker.
   `plugins.enabled`. Hooks: `post_collect(report, rows, cfg)` (puede
   transformar filas) y `post_export(report, paths, cfg)`. Ejemplo incluido:
   `plugins/logfile.py`. Un plugin que falla solo deja warning en el log.
-- **Dashboard web opcional** (FastAPI + Jinja2, fuera del crontab):
+- **Dashboard web opcional** (FastAPI, fuera del crontab; requiere `pip install .[web]`):
 
   ```bash
   uvicorn web.app:app --port 8080
   ```
 
-  Lista los últimos reportes por tipo, descarga de archivos y métricas del
-  último snapshot.
+  KPI de tareas (Redmine) y repositorios (GitLab) con filtros, mapa de salud,
+  tendencias y descarga de informes. Lee los datos que deja cada ejecución del cron.
 
 ## Estructura
 

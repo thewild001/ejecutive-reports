@@ -15,6 +15,9 @@ dependencies = [
     "fastmcp>=2.0.0",    # servidor MCP (mcp/gitlab-mcp)
 ]
 
+[project.optional-dependencies]
+web = ["fastapi>=0.110", "uvicorn>=0.29"]   # panel web opcional (web/app.py)
+
 [project.scripts]
 reports = "cli:app"
 

@@ -113,6 +113,15 @@ def main_portfolio(cfg: dict, g: dict) -> int:
     deltas = snapshots.diff(snapshots.load(out_dir, prefix), current, pr.SNAPSHOT_LABELS)
     snapshots.save(out_dir, prefix, current)
 
+    from common import dashboard_data
+    totals = pr.portfolio_totals(portfolio)
+    alerts = totals.pop("alerts")
+    dashboard_data.save_dataset(
+        out_dir, "gitlab", {**totals, "pipelines_ok": pr.avg_pipelines_ok(portfolio)},
+        pr.dashboard_projects(portfolio),
+        {"alerts": alerts[:30], "contributors": pr.consolidated_contributors(portfolio)[:10],
+         "window_days": pr.S.window_days, "host": pr.S.host})
+
     pages = pr.build_portfolio_pdf(portfolio, group, out_path, deltas)
     log.info("PDF generado: %s (%d páginas, %d/%d proyectos)", out_path, pages,
              len(portfolio), len(projects))

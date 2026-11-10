@@ -1477,3 +1477,22 @@ def snapshot_of(portfolio):
     """{proyecto: métricas numéricas} para comparar con la ejecución anterior."""
     return {p["name"]: {k: p[k] for k in SNAPSHOT_LABELS if isinstance(p.get(k), (int, float))}
             for p in portfolio}
+
+
+def avg_pipelines_ok(portfolio):
+    """% medio de pipelines exitosos entre los proyectos que tienen pipelines."""
+    vals = [p["pipelines_ok"] for p in portfolio if p["pipelines_total"]]
+    return round(sum(vals) / len(vals), 1) if vals else 0
+
+
+def dashboard_projects(portfolio):
+    """Vista compacta por proyecto para web/app.py."""
+    keys = ("name", "subgroup", "score", "label", "pipelines_ok", "pipelines_fail",
+            "pipelines_total", "branches", "stale", "issues_open", "issues_unassigned",
+            "mrs_open", "mrs_merged", "mrs_avg_days", "last_commit", "days_since",
+            "bus_factor", "top_share", "dist_level", "total_commits")
+    return [{**{k: p.get(k) for k in keys},
+             "collaborators": [{"name": c["name"], "commits": c["commits"]}
+                               for c in p["collaborators"][:5]],
+             "alerts": [{"sev": a["sev"], "title": a["title"]} for a in p["alerts"]]}
+            for p in portfolio]
