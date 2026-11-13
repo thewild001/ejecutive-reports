@@ -77,3 +77,11 @@ def test_security_headers_and_health(client):
     assert r.json() == {"status": "ok"}
     assert "frame-ancestors 'none'" in r.headers["content-security-policy"]
     assert r.headers["x-content-type-options"] == "nosniff"
+
+
+def test_page_has_no_external_dependencies():
+    """El panel funciona sin red: nada de CDN, fuentes ni scripts remotos.
+    Si hace falta una librería JS, se descarga y se sirve desde web/static/."""
+    html = (web_app.STATIC / "dashboard.html").read_text(encoding="utf-8")
+    import re
+    assert not re.search(r"https?://|@import|<script[^>]+src=|<link[^>]+href=", html)

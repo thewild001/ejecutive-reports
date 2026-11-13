@@ -66,6 +66,9 @@ Debe existir al menos un plugin de ejemplo funcional (`plugins/logfile.py`).
 **MODIFIED** `web/app.py` (FastAPI, una sola página `web/static/dashboard.html`
 sin dependencias de CDN) DEBE:
 
+- No depender de recursos externos (CDN, fuentes, scripts remotos): gráficas en SVG
+  propio y, si alguna vez se necesita una librería JS, se descarga y se sirve
+  desde `web/static/`. La política CSP del servidor bloquea cualquier origen externo.
 - Leer solo los `output/.dashboard_<fuente>.json` que deja cada ejecución de
   cron (`common/dashboard_data.py`); no consulta Redmine/GitLab ni usa credenciales.
 - Mostrar KPI de tareas (Redmine/GESPRO) y de repositorios (GitLab) con
