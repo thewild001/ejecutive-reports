@@ -57,3 +57,23 @@ def test_download_ok_and_traversal(client):
     assert c.get("/download/..%2Fsecreto.txt").status_code in (400, 404)
     assert c.get("/download/.dashboard_gitlab.json").status_code == 400
     assert c.get("/download/nope.pdf").status_code == 404
+
+
+def test_activity_runs_and_reports(client):
+    c, out = client
+    for _ in range(3):
+        dashboard_data.save_dataset(out, "gespro", {"open": 1}, [], {})
+    (out / "gespro_status_2026-11-10.pdf").write_bytes(b"x" * 2048)
+    (out / "gespro_status_2026-11-11.pdf").write_bytes(b"x" * 2048)
+    act = c.get("/api/dashboard").json()["activity"]
+    assert act["runs"]["gespro"]["count"] == 3
+    assert sum(w["runs"] for w in act["runs"]["gespro"]["per_week"]) == 3
+    assert act["reports"][0]["group"] == "gespro_status" or act["reports"][0]["files"] == 2
+
+
+def test_security_headers_and_health(client):
+    c, _ = client
+    r = c.get("/healthz")
+    assert r.json() == {"status": "ok"}
+    assert "frame-ancestors 'none'" in r.headers["content-security-policy"]
+    assert r.headers["x-content-type-options"] == "nosniff"

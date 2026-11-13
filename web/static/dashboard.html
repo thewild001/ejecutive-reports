@@ -20,6 +20,7 @@
   --mid: #b87a06;
   --bad: #c23b32;
   --focus: #2f4fe0;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s-other: #9aa5b1;
   --radius: 6px;
   --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
 }
@@ -37,12 +38,14 @@
   --mid: #e0a73a;
   --bad: #ff7b70;
   --focus: #9db0ff;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s-other: #6b7886;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --ink: #e7edf3; --ink-2: #aab6c2; --ink-3: #7d8a97; --paper: #0d1319;
     --surface: #141c24; --line: #26323d; --line-2: #1d2832; --accent: #7b93ff;
     --accent-soft: #1b2447; --ok: #3ec68a; --mid: #e0a73a; --bad: #ff7b70; --focus: #9db0ff;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s-other: #6b7886;
   }
 }
 
@@ -170,7 +173,7 @@ td.name small { display: block; color: var(--ink-3); font-weight: 400; font-size
 .hbar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hbar-track { height: 10px; background: var(--line-2); border-radius: 3px; position: relative; overflow: hidden; }
 .hbar-fill, .hbar-over { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; }
-.hbar-fill { background: var(--accent); }
+.hbar-fill { background: var(--s1); }
 .hbar-over { background: var(--bad); }
 .hbar-val { font-weight: 600; min-width: 30px; text-align: right; }
 .stack { display: flex; height: 16px; border-radius: 4px; overflow: hidden; gap: 2px; margin: 4px 0 12px; }
@@ -198,6 +201,44 @@ td.name small { display: block; color: var(--ink-3); font-weight: 400; font-size
 .empty code { background: var(--paper); border-radius: 4px; padding: 1px 6px; font-size: 13px; }
 .foot-note { color: var(--ink-3); font-size: 13px; margin-top: 10px; }
 
+/* ── gráficas ────────────────────────────────────── */
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.chart h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.chart h3 span { font-weight: 500; font-size: 13px; color: var(--ink-3); }
+svg.ch { display: block; width: 100%; height: auto; overflow: visible; }
+.ch .grid { stroke: var(--line-2); stroke-width: 1; }
+.ch .axis { stroke: var(--line); stroke-width: 1; }
+.ch text { fill: var(--ink-3); font: 400 11px var(--font); }
+.ch .lbl { fill: var(--ink); font-weight: 650; font-size: 12px; }
+.ch .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ch .area { opacity: .12; }
+.ch .cross { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; }
+.ch .dotf { opacity: 0; stroke: var(--surface); stroke-width: 2; }
+.ch .hit { fill: transparent; cursor: crosshair; }
+.ch circle.pt { stroke: var(--surface); stroke-width: 2; }
+.ch circle.pt:hover { stroke: var(--ink); }
+.mono-note { color: var(--ink-3); font-size: 13px; margin: 6px 0 0; }
+details.tbl { margin-top: 8px; font-size: 13px; color: var(--ink-2); }
+details.tbl summary { cursor: pointer; width: max-content; }
+details.tbl table { margin-top: 6px; font-size: 13px; }
+.donut-wrap { display: grid; grid-template-columns: 170px 1fr; gap: 18px; align-items: center; }
+.donut-c { font: 650 22px var(--font); fill: var(--ink); } .donut-s { font: 400 11px var(--font); fill: var(--ink-3); }
+.cols-bars { display: flex; align-items: flex-end; gap: 10px; height: 150px; padding-top: 8px; border-bottom: 1px solid var(--line); }
+.cb { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 5px; }
+.cb-pair { display: flex; align-items: flex-end; gap: 2px; width: 100%; justify-content: center; flex: 1; }
+.cb-pair i { display: block; width: 45%; max-width: 22px; min-height: 2px; border-radius: 4px 4px 0 0; }
+.cb-x { font-size: 11px; color: var(--ink-3); white-space: nowrap; margin-top: 4px; }
+.cbwrap { display: flex; gap: 10px; }
+.cbwrap .cb-x { text-align: center; flex: 1; }
+.legend-i { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin: 8px 0 0; }
+.legend-i i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.stack.big { height: 26px; margin: 6px 0 4px; }
+.stack.big i { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 650; }
+.hrow { margin-bottom: 14px; } .hrow:last-child { margin-bottom: 0; }
+.hrow b { font-size: 14px; }
+#tip { position: fixed; z-index: 20; pointer-events: none; background: var(--ink); color: var(--paper); font-size: 12.5px; line-height: 1.35; padding: 6px 9px; border-radius: 5px; max-width: 240px; opacity: 0; transition: opacity .08s; }
+#tip b { font-weight: 650; }
+
 /* ── filtros ─────────────────────────────────────── */
 .fbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 22px; }
 .fbar input[type=search], .fbar select {
@@ -217,7 +258,7 @@ td.name small { display: block; color: var(--ink-3); font-weight: 400; font-size
 .fbar .icon-btn[hidden] { display: none; }
 
 @media (max-width: 1080px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .kpi:nth-child(4) { border-left: 0; } .kpi:nth-child(n+4) { border-top: 1px solid var(--line-2); } }
-@media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .cols { grid-template-columns: 1fr; } .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) {
   .fbar input[type=search] { width: 100%; } .fcount { margin-left: 0; width: 100%; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -225,7 +266,7 @@ td.name small { display: block; color: var(--ink-3); font-weight: 400; font-size
   .kpi:nth-child(-n+2) { border-top: 0; } .kpi:nth-child(even) { border-left: 1px solid var(--line-2) !important; }
   .hbar { grid-template-columns: 90px 1fr auto; }
   main, .top-in { padding-left: 14px; padding-right: 14px; }
-  .pair { grid-template-columns: 1fr; }
+  .pair { grid-template-columns: 1fr; } .grid3 { grid-template-columns: 1fr; } .donut-wrap { grid-template-columns: 1fr; justify-items: center; }
 }
 @media (prefers-reduced-motion: reduce) { .arrive .tile { animation: none; } }
 </style>
@@ -244,11 +285,13 @@ td.name small { display: block; color: var(--ink-3); font-weight: 400; font-size
       <button class="tab" role="tab" data-tab="resumen">Resumen</button>
       <button class="tab" role="tab" data-tab="tareas">Tareas</button>
       <button class="tab" role="tab" data-tab="codigo">Código</button>
+      <button class="tab" role="tab" data-tab="evolucion">Evolución y uso</button>
       <button class="tab" role="tab" data-tab="informes">Informes</button>
     </nav>
   </div>
 </header>
-<main id="main" tabindex="-1" aria-live="polite"></main>
+<main id="main" tabindex="-1"></main>
+<div id="tip" role="tooltip"></div>
 
 <script>
 "use strict";
@@ -258,7 +301,6 @@ const nf = new Intl.NumberFormat("es");
 const num = (v) => (v == null || v === "" ? "—" : nf.format(v));
 const pct = (v) => (v == null ? "—" : `${nf.format(Math.round(v * 10) / 10)}%`);
 const STALE_HOURS = 72;
-const PALETTE = ["#2f4fe0", "#1b9aaa", "#b87a06", "#8a4fd0", "#d1568b", "#5b8c2a", "#c9622c", "#6b7a8c"];
 
 let DATA = null;
 let tab = "resumen";
@@ -395,6 +437,131 @@ function mosaic(items, bands, valueOf, unit, weightOf) {
 }
 const LEGEND = (b) => `<div class="legend" aria-hidden="true"><span><i style="background:var(--ok)"></i>≥ ${b[0]}</span><span><i style="background:var(--mid)"></i>${b[1]}–${b[0] - 1}</span><span><i style="background:var(--bad)"></i>< ${b[1]}</span></div>`;
 
+/* ── gráficas (SVG en línea) ─────────────────────── */
+const dfmt = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" });
+const dlong = new Intl.DateTimeFormat("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const SER = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"];
+const CH = {};          // registro de gráficas de línea para el cursor
+let chSeq = 0;
+const niceMax = (v) => { if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log10(v)); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; };
+
+/* línea con área, rejilla tenue, valor final rotulado y cursor con tooltip */
+function lineChart(title, history, key, { unit = "", color = SER[0], fixed = null, fmt = (v) => num(Math.round(v * 10) / 10) } = {}) {
+  const pts = (history || []).filter((h) => typeof h[key] === "number" && h.ts).map((h) => ({ t: new Date(h.ts).getTime(), v: h[key] }));
+  const head = `<h3>${title}<span>${pts.length ? `${fmt(pts[pts.length - 1].v)}${unit}` : ""}</span></h3>`;
+  if (pts.length < 2) return `<div class="panel chart">${head}<p class="mut">La línea aparece a partir de la segunda ejecución. Hasta ahora hay ${pts.length}.</p></div>`;
+  const W = 360, H = 150, L = 34, R = 34, T = 10, B = 22;
+  const vs = pts.map((p) => p.v);
+  let lo = fixed ? fixed[0] : Math.min(...vs), hi = fixed ? fixed[1] : Math.max(...vs);
+  if (!fixed) {
+    const step = niceMax((hi - lo || Math.abs(hi) || 1) / 2) / (hi - lo > 4 ? 1 : 2);
+    lo = Math.max(0, Math.floor(lo / step) * step); hi = Math.ceil(hi / step) * step; if (hi === lo) hi = lo + step;
+  }
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t, span = t1 - t0 || 1;
+  const X = (t) => L + ((t - t0) / span) * (W - L - R), Y = (v) => T + (1 - (v - lo) / (hi - lo || 1)) * (H - T - B);
+  const xy = pts.map((p) => [X(p.t), Y(p.v)]);
+  const d = xy.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  const area = `${d} L${xy[xy.length - 1][0].toFixed(1)} ${H - B} L${xy[0][0].toFixed(1)} ${H - B} Z`;
+  const ticks = [lo, (lo + hi) / 2, hi];
+  const grid = ticks.map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/><text x="${L - 6}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end">${fmt(v)}</text>`).join("");
+  const [lx, ly] = xy[xy.length - 1];
+  const id = `lc${++chSeq}`;
+  CH[id] = { pts, xy, unit, fmt, title, W, color };
+  const rows = pts.slice(-12).map((p) => `<tr><td>${dlong.format(p.t)}</td><td>${fmt(p.v)}${unit}</td></tr>`).join("");
+  return `<div class="panel chart">${head}
+    <svg class="ch lc" id="${id}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}: de ${fmt(pts[0].v)}${unit} a ${fmt(pts[pts.length - 1].v)}${unit} en ${pts.length} ejecuciones">
+      ${grid}<line class="axis" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/>
+      <text x="${L}" y="${H - 6}">${dfmt.format(t0)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">${dfmt.format(t1)}</text>
+      <path class="area" d="${area}" fill="${color}"/><path class="line" d="${d}" stroke="${color}"/>
+      <line class="cross" y1="${T}" y2="${H - B}"/><circle class="dotf" r="5" fill="${color}"/>
+      <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4" fill="${color}" stroke="var(--surface)" stroke-width="2"/>
+      <text class="lbl" x="${(lx + 8).toFixed(1)}" y="${(ly + 4).toFixed(1)}">${fmt(pts[pts.length - 1].v)}</text>
+      <rect class="hit" x="${L}" y="0" width="${W - L - R}" height="${H}"/></svg>
+    <details class="tbl"><summary>Ver como tabla</summary><table><thead><tr><th>Ejecución</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table></details></div>`;
+}
+
+/* anillo con huecos de 2px y leyenda directa con cifras */
+function donut(entries, label) {
+  const tot = entries.reduce((s, [, n]) => s + n, 0);
+  if (!tot) return `<p class="mut">Sin datos.</p>`;
+  const top = entries.slice(0, 4), rest = entries.slice(4).reduce((s, [, n]) => s + n, 0);
+  const items = rest ? [...top, ["Otros", rest]] : top;
+  const col = (i) => (items[i][0] === "Otros" ? "var(--s-other)" : SER[i]);
+  const r = 62, C = 2 * Math.PI * r;
+  let off = 0;
+  const arcs = items.map(([k, n], i) => {
+    const len = (n / tot) * C, gap = items.length > 1 ? 2 : 0;
+    const a = `<circle cx="80" cy="80" r="${r}" fill="none" stroke="${col(i)}" stroke-width="20" stroke-dasharray="${Math.max(len - gap, 0.5)} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 80 80)" data-tip="<b>${esc(k)}</b><br>${num(n)} (${Math.round((n / tot) * 100)}%)"/>`;
+    off += len; return a;
+  }).join("");
+  return `<div class="donut-wrap"><svg class="ch" viewBox="0 0 160 160" role="img" aria-label="${esc(label)}" style="max-width:170px">${arcs}
+    <text class="donut-c" x="80" y="82" text-anchor="middle" style="fill:var(--ink)">${num(tot)}</text><text class="donut-s" x="80" y="99" text-anchor="middle">${esc(label)}</text></svg>
+    <div class="keys" style="grid-template-columns:1fr">${items.map(([k, n], i) => `<span><i style="background:${col(i)}"></i>${esc(k)}<b>${num(n)} · ${Math.round((n / tot) * 100)}%</b></span>`).join("")}</div></div>`;
+}
+
+/* dispersión: cada punto es un proyecto, coloreado por su estado de salud */
+function scatter(rows, { x, y, xLabel, yLabel, yMax = 100, bands, name, tip }) {
+  if (!rows.length) return NOMATCH;
+  const W = 480, H = 250, L = 40, R = 12, T = 10, B = 38;
+  const xMax = niceMax(Math.max(...rows.map(x), 1));
+  const X = (v) => L + (v / xMax) * (W - L - R), Y = (v) => T + (1 - v / yMax) * (H - T - B);
+  const grid = [0, 25, 50, 75, 100].map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v * yMax / 100).toFixed(1)}" y2="${Y(v * yMax / 100).toFixed(1)}"/><text x="${L - 6}" y="${(Y(v * yMax / 100) + 4).toFixed(1)}" text-anchor="end">${Math.round(v * yMax / 100)}</text>`).join("");
+  const xt = [0, 0.5, 1].map((f) => `<text x="${X(f * xMax).toFixed(1)}" y="${H - B + 15}" text-anchor="${f === 0 ? "start" : f === 1 ? "end" : "middle"}">${num(Math.round(f * xMax))}</text>`).join("");
+  const col = { ok: "var(--ok)", mid: "var(--mid)", bad: "var(--bad)" };
+  const dots = rows.map((r) => `<circle class="pt" cx="${X(x(r)).toFixed(1)}" cy="${Y(y(r)).toFixed(1)}" r="6" fill="${col[band(y(r), bands)]}" data-tip="${esc(tip(r))}"/>`).join("");
+  return `<svg class="ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(yLabel)} frente a ${esc(xLabel)} por proyecto">${grid}<line class="axis" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/>${xt}
+    <text x="${(L + W - R) / 2}" y="${H - 4}" text-anchor="middle">${esc(xLabel)}</text><text x="10" y="${(T + H - B) / 2}" text-anchor="middle" transform="rotate(-90 10 ${(T + H - B) / 2})">${esc(yLabel)}</text>${dots}</svg>
+    <div class="legend-i"><span><i style="background:var(--ok)"></i>Buena</span><span><i style="background:var(--mid)"></i>Regular</span><span><i style="background:var(--bad)"></i>Crítica</span></div>`;
+}
+
+/* reparto de proyectos por estado de salud, una barra por sistema */
+function healthStack(label, items, valueOf, bands) {
+  const c = { ok: 0, mid: 0, bad: 0 };
+  items.forEach((p) => { c[band(valueOf(p), bands)]++; });
+  const tot = items.length || 1, seg = [["ok", "Buena", "var(--ok)"], ["mid", "Regular", "var(--mid)"], ["bad", "Crítica", "var(--bad)"]];
+  return `<div class="hrow"><b>${label}</b><div class="stack big" role="img" aria-label="${label}: ${seg.map(([k, t]) => `${c[k]} ${t.toLowerCase()}`).join(", ")}">${seg.filter(([k]) => c[k]).map(([k, t, col]) => `<i style="flex:${c[k]};background:${col}" data-tip="<b>${t}</b><br>${c[k]} de ${items.length} proyectos">${c[k]}</i>`).join("")}</div>
+    <div class="legend-i">${seg.map(([k, t, col]) => `<span><i style="background:${col}"></i>${t} ${c[k]}</span>`).join("")}</div></div>`;
+}
+
+/* columnas agrupadas: ejecuciones registradas por semana */
+function weekBars(activity) {
+  const runs = activity?.runs || {};
+  const weeks = [...new Set(Object.values(runs).flatMap((r) => r.per_week.map((w) => w.week)))].sort();
+  if (!weeks.length) return `<p class="mut">Aún no hay ejecuciones registradas.</p>`;
+  const get = (src, wk) => runs[src]?.per_week.find((w) => w.week === wk)?.runs || 0;
+  const mx = Math.max(...weeks.flatMap((w) => [get("gespro", w), get("gitlab", w)]), 1);
+  const cols = weeks.map((w) => `<div class="cb"><div class="cb-pair">${[["gespro", "var(--s1)", "Redmine"], ["gitlab", "var(--s2)", "GitLab"]].map(([k, c, n]) => `<i style="height:${(get(k, w) / mx) * 100}%;background:${c}" data-tip="<b>${n}</b> · ${w}<br>${get(k, w)} ejecuciones"></i>`).join("")}</div></div>`).join("");
+  return `<div class="cols-bars" role="img" aria-label="Ejecuciones por semana">${cols}</div><div class="cbwrap">${weeks.map((w) => `<span class="cb-x">${w.slice(5)}</span>`).join("")}</div>
+    <div class="legend-i"><span><i style="background:var(--s1)"></i>Redmine</span><span><i style="background:var(--s2)"></i>GitLab</span></div>`;
+}
+
+/* tooltip global: marcas con data-tip y cursor de las líneas */
+const tip = () => $("#tip");
+function showTip(html, x, y) {
+  const t = tip(); t.innerHTML = html; t.style.opacity = 1;
+  const w = t.offsetWidth, h = t.offsetHeight;
+  t.style.left = `${Math.min(innerWidth - w - 8, Math.max(8, x + 12))}px`;
+  t.style.top = `${Math.max(8, y - h - 10)}px`;
+}
+const hideTip = () => { const t = tip(); if (t) t.style.opacity = 0; };
+document.addEventListener("pointermove", (e) => {
+  const lc = e.target.closest?.("svg.lc");
+  if (lc) {
+    const c = CH[lc.id], r = lc.getBoundingClientRect(), sx = ((e.clientX - r.left) / r.width) * c.W;
+    let best = 0; c.xy.forEach(([x], i) => { if (Math.abs(x - sx) < Math.abs(c.xy[best][0] - sx)) best = i; });
+    const [x, y] = c.xy[best], p = c.pts[best];
+    const cross = lc.querySelector(".cross"), dot = lc.querySelector(".dotf");
+    cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.style.opacity = 1;
+    dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.style.opacity = 1;
+    return showTip(`<b>${c.fmt(p.v)}${c.unit}</b><br>${dlong.format(p.t)}`, e.clientX, e.clientY);
+  }
+  const m = e.target.closest?.("[data-tip]");
+  if (m) return showTip(m.dataset.tip, e.clientX, e.clientY);
+  hideTip();
+  document.querySelectorAll("svg.lc .cross, svg.lc .dotf").forEach((n) => { n.style.opacity = 0; });
+});
+document.addEventListener("pointerleave", hideTip, true);
+
 /* ── vistas ─────────────────────────────────────── */
 function viewResumen() {
   const { gespro: g, gitlab: l } = DATA.sources;
@@ -410,6 +577,10 @@ function viewResumen() {
   html += `<div class="lane"><div class="lane-head"><b>Salud del repositorio · GitLab</b>${l ? LEGEND(DATA.bands.gitlab) : ""}</div>`
     + (l ? mosaic(lp, DATA.bands.gitlab, (p) => p.score, "/100", (p) => p.total_commits || 1) : empty("GitLab", "scripts/run_gitlab_ejecutive_report.sh")) + `</div></section>`;
 
+  if (g || l) {
+    html += `<section><h2>Reparto de salud</h2><p class="sub">Cuántos proyectos están en cada estado${flt ? " (solo los filtrados)" : ""}.</p><div class="panel">
+      ${g ? healthStack("Redmine · avance de tareas", gp, (p) => p.progress, DATA.bands.gespro) : ""}${l ? healthStack("GitLab · salud del repositorio", lp, (p) => p.score, DATA.bands.gitlab) : ""}</div></section>`;
+  }
   let gt = g?.totals || {}, lt = l?.totals || {};
   if (flt && g) {
     const tot = sum(gp, "total");
@@ -474,15 +645,17 @@ function viewTareas() {
   const agg = {};
   if (flt) gp.forEach((p) => Object.entries(p.status_counts || {}).forEach(([k, n]) => { agg[k] = (agg[k] || 0) + n; }));
   const sc = Object.entries(flt ? agg : g.extra.status_counts || {}).sort((a, b) => b[1] - a[1]);
-  const total = sc.reduce((s, [, n]) => s + n, 0) || 1;
-  const col = (i) => (i < PALETTE.length - 1 ? PALETTE[i] : PALETTE[PALETTE.length - 1]);
   html += `<section class="cols">
-    <div><h2>Tareas por estado</h2><p class="sub">${flt ? "Solo los proyectos filtrados." : "Reparto de todas las tareas de los proyectos analizados."}</p><div class="panel">
-      <div class="stack" role="img" aria-label="Distribución de tareas por estado">${sc.map(([k, n], i) => `<i style="flex:${n};background:${col(i)}" title="${esc(k)}: ${num(n)}"></i>`).join("")}</div>
-      <div class="keys">${sc.map(([k, n], i) => `<span><i style="background:${col(i)}"></i>${esc(k)}<b>${num(n)} · ${Math.round((n / total) * 100)}%</b></span>`).join("")}</div></div></div>
+    <div><h2>Tareas por estado</h2><p class="sub">${flt ? "Solo los proyectos filtrados." : "Reparto de todas las tareas de los proyectos analizados."}</p><div class="panel">${donut(sc, "tareas")}</div></div>
+    <div><h2>Avance frente a carga</h2><p class="sub">Cada punto es un proyecto: más abajo y a la derecha, más trabajo pendiente.</p><div class="panel chart">${scatter(gp, { x: (r) => r.open, y: (r) => r.progress, xLabel: "Tareas abiertas", yLabel: "Avance (%)", bands: B, tip: (r) => `<b>${r.name}</b><br>${num(r.open)} abiertas · ${Math.round(r.progress)}% de avance` })}</div></div></section>
+  <section class="cols">
     <div><h2>Carga por persona</h2><p class="sub">Tareas abiertas; en rojo, las vencidas.${note}</p><div class="panel">${(() => {
       const w = g.extra.workload || [];
       return hbars(w.map((m) => ({ name: m.name, value: m.open, over: m.overdue })), Math.max(...w.map((m) => m.open), 1));
+    })()}</div></div>
+    <div><h2>Volumen por proyecto</h2><p class="sub">Tareas totales; los diez proyectos con más trabajo.</p><div class="panel">${(() => {
+      const top = [...gp].sort((a, b) => b.total - a.total).slice(0, 10);
+      return hbars(top.map((p) => ({ name: p.name, value: p.total })), Math.max(...top.map((p) => p.total), 1));
     })()}</div></div></section>`;
 
   const wd = g.extra.window_days;
@@ -520,11 +693,45 @@ function viewCodigo() {
   ], "score", "asc") : NOMATCH;
   html += `</div></section>`;
 
+  const sg = {};
+  lp.forEach((p) => { sg[p.subgroup || "Sin subgrupo"] = (sg[p.subgroup || "Sin subgrupo"] || 0) + (p.total_commits || 0); });
+  const sgs = Object.entries(sg).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  html += `<section class="cols">
+    <div><h2>Salud frente a actividad</h2><p class="sub">Cada punto es un repositorio: arriba y a la derecha, sano y activo.</p><div class="panel chart">${scatter(lp, { x: (r) => r.total_commits || 0, y: (r) => r.score, xLabel: `Commits (${wd} días)`, yLabel: "Salud", bands: B, tip: (r) => `<b>${r.name}</b><br>${r.score}/100 · ${num(r.total_commits || 0)} commits` })}</div></div>
+    <div><h2>Actividad por subgrupo</h2><p class="sub">Commits de los últimos ${wd} días.</p><div class="panel">${hbars(sgs.map(([name, value]) => ({ name, value })), Math.max(...sgs.map(([, v]) => v), 1))}</div></div></section>`;
+
   const people = l.extra.contributors || [];
   const alerts = (l.extra.alerts || []).filter((a) => !flt || names.has(a.project));
   html += `<section class="cols">
     <div><h2>Quién aporta código</h2><p class="sub">Commits de los últimos ${wd} días, todos los proyectos.${flt ? " No se filtra por proyecto." : ""}</p><div class="panel">${hbars(people.map((p) => ({ name: p.name, value: p.commits })), Math.max(...people.map((p) => p.commits), 1))}</div></div>
     <div><h2>Alertas</h2><p class="sub">${flt ? `${num(alerts.length)} alertas en los proyectos filtrados.` : `${num(t.crit)} críticas y ${num(t.att)} de atención.`}</p><div class="panel">${alerts.length ? `<ul class="alerts">${alerts.slice(0, 10).map(alertItem).join("")}</ul>` : `<p class="mut">Sin alertas.</p>`}</div></div></section>`;
+  return html;
+}
+
+function viewEvolucion() {
+  const { gespro: g, gitlab: l } = DATA.sources, act = DATA.activity || { runs: {}, reports: [] };
+  if (!g && !l) return empty("ningún sistema", "scripts/run_*.sh");
+  let html = "";
+  const reps = act.reports, files = reps.reduce((n, r) => n + r.files, 0), mb = reps.reduce((n, r) => n + r.size_kb, 0) / 1024;
+  const run = (k) => act.runs[k]?.count ?? 0;
+  const cells = [
+    [`Ejecuciones de Redmine`, num(run("gespro")), act.runs.gespro?.last ? `última ${ago(act.runs.gespro.last, DATA.now)}` : "sin registro"],
+    [`Ejecuciones de GitLab`, num(run("gitlab")), act.runs.gitlab?.last ? `última ${ago(act.runs.gitlab.last, DATA.now)}` : "sin registro"],
+    [`Informes guardados`, num(files), `${nf.format(Math.round(mb * 10) / 10)} MB en total`],
+    [`Tipos de informe`, num(reps.length), reps[0] ? `el último, ${ago(reps[0].last, DATA.now)}` : "sin informes"],
+  ];
+  html += `<section><h2>Uso de los informes</h2><p class="sub">Lo que han dejado las ejecuciones programadas hasta hoy.</p>
+    <div class="kpis" style="grid-template-columns:repeat(${cells.length}, minmax(0,1fr))">${cells.map(([t, v, f]) => `<div class="kpi"><div class="kpi-label">${t}</div><div class="kpi-val">${v}</div><div class="kpi-foot"><span class="delta">${f}</span></div></div>`).join("")}</div></section>`;
+  html += `<section class="cols"><div><h2>Ejecuciones por semana</h2><p class="sub">Cuántas veces corrió cada informe. Una barra baja avisa de ejecuciones que se saltaron.</p><div class="panel chart">${weekBars(act)}</div></div>
+    <div><h2>Informes por tipo</h2><p class="sub">Archivos conservados en la carpeta de salida.</p><div class="panel">${reps.length ? `<div class="scroll"><table><thead><tr><th>Tipo</th><th>Archivos</th><th>Tamaño</th><th>Último</th></tr></thead><tbody>${reps.map((r) => `<tr><td class="name">${esc(r.group)}</td><td>${num(r.files)}</td><td>${nf.format(Math.round(r.size_kb))} KB</td><td>${ago(r.last, DATA.now)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="mut">Todavía no hay informes.</p>`}</div></div></section>`;
+  if (g) {
+    html += `<section><h2>Evolución de Redmine</h2><p class="sub">Un punto por ejecución. Pasa el cursor para ver el valor exacto.</p><div class="grid3">
+      ${lineChart("Tareas abiertas", g.history, "open", { color: SER[0] })}${lineChart("Tareas vencidas", g.history, "overdue", { color: SER[1] })}${lineChart("Avance global", g.history, "progress", { color: SER[2], unit: "%", fixed: [0, 100] })}</div></section>`;
+  }
+  if (l) {
+    html += `<section><h2>Evolución de GitLab</h2><p class="sub">Un punto por ejecución.</p><div class="grid3">
+      ${lineChart("Salud media", l.history, "avg_health", { color: SER[0], fixed: [0, 100] })}${lineChart("MRs abiertos", l.history, "mrs_open", { color: SER[1] })}${lineChart("Pipelines correctos", l.history, "pipelines_ok", { color: SER[2], unit: "%", fixed: [0, 100] })}</div></section>`;
+  }
   return html;
 }
 
@@ -560,7 +767,7 @@ function renderChrome() {
   };
 }
 
-const VIEWS = { resumen: viewResumen, tareas: viewTareas, codigo: viewCodigo, informes: viewInformes };
+const VIEWS = { resumen: viewResumen, tareas: viewTareas, codigo: viewCodigo, evolucion: viewEvolucion, informes: viewInformes };
 let firstPaint = true;
 function renderView(animate) {
   const v = $("#view");
@@ -570,7 +777,7 @@ function renderView(animate) {
 }
 function render() {
   document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
-  $("#main").innerHTML = `${tab === "informes" ? "" : filterBar()}<div id="view"></div>`;
+  $("#main").innerHTML = `${tab === "informes" || tab === "evolucion" ? "" : filterBar()}<div id="view"></div>`;
   renderView(firstPaint && tab === "resumen");
   firstPaint = false;
 }
