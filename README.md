@@ -210,7 +210,8 @@ REPORTS/
 ├── gespro/            # reporte Redmine/GESPRO
 ├── gitlab/            # reporte GitLab
 ├── trends/            # boletín de tendencias + trends_data.json
-├── tests/             # pruebas automatizadas\n└── output/            # PDFs y estado local (output/.state/)
+├── tests/             # pruebas automatizadas
+└── output/            # PDFs y estado local (output/.state/)
 ```
 
 Generado por el Grupo de Inteligencia Empresarial — FORTES/UCI.
