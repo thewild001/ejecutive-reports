@@ -60,7 +60,7 @@ Ver `crontab.example` con variantes local y Docker.
 Para el plan de endurecimiento de las ejecuciones programadas (observabilidad,
 control de concurrencia, recuperación, verificación de artefactos y pruebas),
 consulta [Plan de confiabilidad de ejecuciones programadas](docs/implementation/scheduled-execution-reliability-plan.md).
-El documento define tareas y criterios de aceptación. En esta rama ya se implementó el registro inicial descrito a continuación.
+El documento define las fases pendientes y sus criterios de aceptación. En `main` está integrada la primera entrega del registro de ejecuciones y el endurecimiento inicial de los wrappers descritos a continuación.
 
 ### Registro de ejecuciones programadas (fase inicial)
 
@@ -89,10 +89,50 @@ Variables adicionales:
 - `REPORTS_RUN_ID`: identificador generado por el wrapper y exportado al proceso
   Python del reporte (no debe establecerse manualmente).
 
+### Contrato operativo del wrapper
+
+Los wrappers específicos de `scripts/` delegan en `scripts/run_report.sh`,
+que acepta `gespro`, `gitlab` o `trends` como primer argumento. El runner:
+
+- Resuelve la raíz del repositorio independientemente del directorio desde el que
+  se invoque y selecciona Python en este orden: `REPORTS_PYTHON`, `.venv/bin/python`
+  o `python3`.
+- Carga desde `.env` únicamente las variables propias del wrapper
+  (`REPORTS_PYTHON`, `REPORTS_PROXY`, `REPORTS_LOG_DIR`,
+  `REPORTS_REQUIRE_DELIVERY` y `REPORTS_STATE_DB`); no ejecuta el archivo como
+  código shell.
+- Aplica `umask 077`, mantiene un lock independiente por reporte en
+  `.locks/` y registra el intento antes de adquirirlo.
+- Usa `REPORTS_REQUIRE_DELIVERY=1` por defecto. Configura `0` para permitir
+  ejecuciones sin un canal de entrega habilitado.
+
+Códigos de salida relevantes:
+
+| Código | Significado |
+|---:|---|
+| `0` | Ejecución correcta |
+| `2` | Uso o reporte no válido |
+| `3` | Falló un canal de entrega |
+| `4` | No hay canales de entrega habilitados |
+| `5` | Datos de tendencias desactualizados |
+| `6` | El MCP de GitLab no devolvió datos |
+| `70` | No se pudo registrar o cerrar el ledger |
+| `75` | Ejecución omitida porque el lock ya estaba ocupado |
+| `127` | No se encontró un intérprete Python ejecutable |
+| `129/130/143` | Interrupción por HUP/INT/TERM |
+
+Los códigos `3`–`6` proceden del generador y se propagan sin convertirlos en
+éxito. Los fallos se resumen en stderr; el detalle se conserva en
+`logs/<reporte>.log`. En cron, configura `MAILTO` si deseas recibir esos avisos.
+
 **Límites actuales:** no existe todavía una interfaz de consulta/health, recuperación
-automática de registros `RUNNING` abandonados, timeout, política de reintentos,
-verificación de PDF ni garantía de coordinación multi-host. El ledger y `flock`
-son locales; no se debe ubicar la base en NFS ni compartirla entre hosts.
+automática de registros `RUNNING` abandonados, timeout efectivo del proceso,
+política de reintentos ni verificación del PDF. El runner admite el estado
+`TIMED_OUT` en el ledger, pero aún no implementa la detección ni terminación por
+timeout. El ledger SQLite y `flock` ofrecen coordinación local; no se debe ubicar
+la base en NFS ni compartirla entre hosts. Si `flock` no está instalado, el wrapper
+avisa y continúa sin exclusión mutua: instala `flock` para evitar ejecuciones
+concurrentes del mismo reporte.
 
 ## Configuración (config.yaml)
 
