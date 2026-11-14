@@ -6,7 +6,6 @@ distributed lock or a multi-host coordination mechanism.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import socket
 import sqlite3
@@ -120,7 +119,9 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     begin = sub.add_parser("start")
     begin.add_argument("--report", required=True)
-    begin.add_argument("--log-path")\n    begin.add_argument("--pid", type=int, default=os.getpid())\n    begin.add_argument("--host", default=socket.gethostname())
+    begin.add_argument("--log-path")
+    begin.add_argument("--pid", type=int, default=os.getpid())
+    begin.add_argument("--host", default=socket.gethostname())
     end = sub.add_parser("finish")
     end.add_argument("--run-id", required=True)
     end.add_argument("--status", choices=sorted(TERMINAL_STATES), required=True)
