@@ -46,7 +46,7 @@ export REPORTS_STATE_DB="${REPORTS_STATE_DB:-$ROOT/output/.state/execution-ledge
 case "$REPORTS_STATE_DB" in /*) ;; *) REPORTS_STATE_DB="$ROOT/$REPORTS_STATE_DB";; esac
 export REPORTS_STATE_DB
 stamp() { date '+%Y-%m-%d %H:%M:%S'; }
-log() { printf '%s [%s] %s\\n' "$(stamp)" "$REPORT" "$*" >> "$LOG"; }
+log() { printf '%s [%s] %s\n' "$(stamp)" "$REPORT" "$*" >> "$LOG"; }
 
 if [ -n "${REPORTS_PROXY:-}" ]; then
   export HTTP_PROXY="$REPORTS_PROXY" HTTPS_PROXY="$REPORTS_PROXY"
