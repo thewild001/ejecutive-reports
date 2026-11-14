@@ -8,7 +8,15 @@ dependencies = [
     "httpx>=0.27",
     "PyYAML>=6.0",
     "pydantic>=2.0",
+    "matplotlib>=3.8",   # gráficos del informe GitLab (aprobado por el usuario)
+    "python-gitlab>=4.0", # servidor MCP de analítica (mcp/gitlab-mcp)
+    "pandas>=2.0",
+    "python-dateutil>=2.8",
+    "fastmcp>=2.0.0",    # servidor MCP (mcp/gitlab-mcp)
 ]
+
+[project.optional-dependencies]
+web = ["fastapi>=0.110", "uvicorn>=0.29"]   # panel web opcional (web/app.py)
 
 [project.scripts]
 reports = "cli:app"

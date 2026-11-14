@@ -67,6 +67,9 @@ class GesproConfig(_Base):
     previous_period_days: int = Field(default=30, ge=7, le=180)
     filename_prefix: str = "informe_gespro"
     timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+    system_name: str = "GESPRO"
+    new_status_names: list[str] = Field(default_factory=lambda: ["Nueva", "New"])
+    in_progress_status_names: list[str] = Field(default_factory=lambda: ["Ejecución", "In Progress"])
 
     @field_validator("base_url")
     @classmethod
@@ -82,11 +85,20 @@ class GitlabConfig(_Base):
     verify_ssl: bool = False
     max_projects: int = Field(default=25, ge=1, le=500)
     stale_branch_days: int = Field(default=60, ge=1)
-    include_pipelines: bool = True
-    include_merge_requests: bool = True
-    activity_days: int = Field(default=90, ge=7, le=365)
     filename_prefix: str = "informe_gitlab"
     timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+    # Proyectos del portafolio: lista de rutas o {nombre: ruta}. Vacío = descubrir
+    # los del grupo por la API (hasta max_projects).
+    projects: list[str] | dict[str, str] = Field(default_factory=list)
+    window_days: int = Field(default=2, ge=1, le=365)    # actividad reciente (colaboradores)
+    trend_months: int = Field(default=12, ge=3, le=36)   # serie mensual de tendencia
+    group_max_projects: int = Field(default=30, ge=1, le=500)
+    group_min_activity_days: int = Field(default=90, ge=1)
+    classification: str = ""                              # pie de página, p. ej. "USO INTERNO"
+    # Comando del servidor MCP (stdio). Vacío = python mcp/gitlab-mcp/main.py --transport stdio.
+    # Ej. Docker: ["docker","exec","-i","<contenedor>","python3","<server.py>","--transport","stdio"]
+    mcp_command: list[str] = Field(default_factory=list)
+    mcp_timeout_seconds: float = Field(default=90.0, gt=0, le=900)
 
     @field_validator("base_url")
     @classmethod
@@ -100,6 +112,8 @@ class TrendsConfig(_Base):
     header_title: str = "Vigilancia Tecnológica"
     filename_prefix: str = "informe_tendencias"
     rss_feeds: list[str] = Field(default_factory=list)
+    # Si el JSON de datos es más viejo que esto, no se genera ni envía (0 = sin límite).
+    max_age_days: int = Field(default=0, ge=0)
 
     @field_validator("rss_feeds")
     @classmethod
@@ -117,6 +131,9 @@ class EmailConfig(_Base):
     pass_env: str = "SMTP_PASS"
     sender: str = ""
     recipients: list[str] = Field(default_factory=list)
+    ca_bundle: str = ""  # ruta a la CA interna (preferible a verify_ssl: false)
+    # Plantillas por reporte: {"gespro": {"subject": "...", "body": "..."}, ...}
+    messages: dict[str, dict[str, str]] = Field(default_factory=dict)
 
 
 class TelegramConfig(_Base):

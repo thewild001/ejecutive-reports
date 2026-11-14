@@ -59,6 +59,8 @@ def setup_logging(cfg: dict | None = None, root: Path | None = None) -> None:
         h.setFormatter(formatter)
 
     logging.basicConfig(level=level, handlers=handlers, force=True)
+    # fpdf2 → fontTools vuelca decenas de líneas INFO por cada PDF y tapa los avisos reales.
+    logging.getLogger("fontTools").setLevel(max(level, logging.WARNING))
     logging.getLogger(__name__).debug(
         "Logging inicializado (nivel=%s, archivo=%s)", level_name, log_file or "no"
     )

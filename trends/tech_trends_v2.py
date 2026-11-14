@@ -1,4 +1,4 @@
-#!/home/fortes/.hermes/hermes-agent/venv/bin/python3
+#!/usr/bin/env python3
 """
 |Tech Trends v3 — Boletín de Tendencias Tecnológicas (fpdf2 + DejaVu)
 |22 temáticas dinámicas de Ingeniería de Software (SDLC completo).
@@ -6,7 +6,9 @@
 |Principio rector: si no hay señales trending para una temática,
 |simplemente no aparece en el boletín.
 
-Uso: python3 tech_trends_v2.py <data_semanal.json>
+Uso: python3 trends/tech_trends_v2.py <data_semanal.json> [salida.pdf]
+La identidad (empresa, unidad, logo, título) y el directorio de salida salen de
+config.yaml (company.*, trends.*, output.dir); nada de eso vive en el código.
 
 Estructura JSON esperada:
 {
@@ -20,11 +22,23 @@ Estructura JSON esperada:
 """
 
 import json, sys, os, datetime
+from dataclasses import dataclass
+from pathlib import Path
+
 from fpdf import FPDF
 
-FONT_DIR = "/usr/share/fonts/truetype/dejavu"
-OUTPUT_PATH = os.path.expanduser("~/scripts/informe_tendencias_v2.pdf")
-LOGO_PATH = os.path.expanduser("~/fortes-logo-sin-fondo.png")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from common.pdfbase import find_font_dir
+
+
+@dataclass(frozen=True)
+class Branding:
+    """Identidad del boletín: viene de config.yaml (company.*), nunca del código."""
+    company: str = ""
+    unit: str = ""
+    issued_by: str = ""
+    logo_path: str = ""
+    header_title: str = "Vigilancia Tecnológica"
 
 # ============================================================
 # Paleta premium — misma que el cron validado
@@ -266,14 +280,16 @@ TOPIC_ORDER = [
 
 class TechTrendsPDF(FPDF):
 
-    def __init__(self):
+    def __init__(self, branding: Branding | None = None):
         super().__init__('P', 'mm', 'A4')
-        self.add_font("Sans", "", os.path.join(FONT_DIR, "DejaVuSans.ttf"))
-        self.add_font("Sans", "B", os.path.join(FONT_DIR, "DejaVuSans-Bold.ttf"))
-        self.add_font("Serif", "", os.path.join(FONT_DIR, "DejaVuSerif.ttf"))
-        self.add_font("Serif", "B", os.path.join(FONT_DIR, "DejaVuSerif-Bold.ttf"))
-        self.add_font("Mono", "", os.path.join(FONT_DIR, "DejaVuSansMono.ttf"))
-        self.add_font("Mono", "B", os.path.join(FONT_DIR, "DejaVuSansMono-Bold.ttf"))
+        self.branding = branding or Branding()
+        font_dir = find_font_dir()
+        self.add_font("Sans", "", os.path.join(font_dir, "DejaVuSans.ttf"))
+        self.add_font("Sans", "B", os.path.join(font_dir, "DejaVuSans-Bold.ttf"))
+        self.add_font("Serif", "", os.path.join(font_dir, "DejaVuSerif.ttf"))
+        self.add_font("Serif", "B", os.path.join(font_dir, "DejaVuSerif-Bold.ttf"))
+        self.add_font("Mono", "", os.path.join(font_dir, "DejaVuSansMono.ttf"))
+        self.add_font("Mono", "B", os.path.join(font_dir, "DejaVuSansMono-Bold.ttf"))
         self.set_auto_page_break(True, 18)
         self.set_margins(LM, TM, RM)
 
@@ -281,12 +297,9 @@ class TechTrendsPDF(FPDF):
 
     def header(self):
         if self.page_no() > 1:
-            if os.path.exists(LOGO_PATH):
-                logo_w = 15
-                logo_h = logo_w * (654 / 978)
-                logo_x = LM
-                logo_y = 3.5
-                self.image(LOGO_PATH, x=logo_x, y=logo_y, w=logo_w, h=logo_h)
+            logo = self.branding.logo_path
+            if logo and os.path.isfile(logo):
+                self.image(logo, x=LM, y=3.5, h=10)  # solo h: conserva la proporción real
 
             self.set_xy(PW - RM, 4)
             self.set_font("Sans", "", 7.5)
@@ -300,7 +313,9 @@ class TechTrendsPDF(FPDF):
             self.set_xy(LM, 8.5)
             self.set_font("Sans", "", 7)
             self.set_text_color(*INK_MUTED)
-            self.cell(0, 4, "GRUPO DE INTELIGENCIA EMPRESARIAL | FORTES | VIGILANCIA TECNOLÓGICA", align="C")
+            b = self.branding
+            subtitle = " | ".join(p for p in (b.issued_by, b.company, b.header_title) if p)
+            self.cell(0, 4, subtitle.upper(), align="C")
 
             self.set_draw_color(*GOLD)
             self.set_line_width(0.7)
@@ -315,8 +330,9 @@ class TechTrendsPDF(FPDF):
             self.set_y(-15)
             self.set_font("Sans", "", 6.5)
             self.set_text_color(*INK_MUTED)
-            ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M UTC")
-            self.cell(0, 8, f"FORTES UCI - Generado: {ts}", align="C")
+            ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+            prefix = f"{self.branding.company} - " if self.branding.company else ""
+            self.cell(0, 8, f"{prefix}Generado: {ts}", align="C")
 
     # ========== HELPERS ==========
 
@@ -357,8 +373,8 @@ class TechTrendsPDF(FPDF):
         self.set_text_color(*WHITE)
         self.cell(0, 5.5, f"Fecha de corte: {cutoff}", align="C", new_x="LMARGIN", new_y="NEXT")
 
-        author = data.get("author") or "Grupo de Inteligencia Empresarial"
-        author_role = data.get("author_role") or "Grupo de Investigación, Desarrollo e Innovación"
+        author = data.get("author") or self.branding.issued_by or self.branding.company
+        author_role = data.get("author_role") or self.branding.unit
         self.ln(1.5)
         self.set_font("Sans", "B", 9)
         self.set_text_color(*GOLD)
@@ -522,8 +538,13 @@ class TechTrendsPDF(FPDF):
 # ============================================================
 
 def load_data(path):
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
+
+
+def is_v2_data(data: dict) -> bool:
+    """True si el JSON usa el esquema v2 (señales) y no el clásico (secciones)."""
+    return any(k in data for k in ("top_signals", "other_signals", "sources_count", "total_signals"))
 
 
 # ============================================================
@@ -599,10 +620,9 @@ def auto_generate_summary(data):
     return " ".join(parts) if parts else ""
 
 
-def generate_report(data_file, output_path=None):
-    data = load_data(data_file)
-    pdf = TechTrendsPDF()
-    out_path = output_path or OUTPUT_PATH
+def build_report(data, out_path, branding=None):
+    """Maqueta el boletín v2 desde un dict ya cargado. Devuelve la ruta escrita."""
+    pdf = TechTrendsPDF(branding)
 
     # ===== PORTADA =====
     pdf.cover_page(data)
@@ -650,38 +670,55 @@ def generate_report(data_file, output_path=None):
                  align="C", new_x="LMARGIN", new_y="NEXT")
 
     # ===== SALIDA =====
-    pdf.output(out_path)
-    return out_path
+    pdf.output(str(out_path))
+    return str(out_path)
+
+
+def generate_report(data_file, output_path, branding=None):
+    return build_report(load_data(data_file), output_path, branding)
 
 
 # ============================================================
 # MAIN
 # ============================================================
 
-def main():
+def branding_from_config(cfg: dict) -> Branding:
+    """Identidad del boletín desde config.yaml (company.* y trends.header_title)."""
+    from common.settings import REPORTS_ROOT
+
+    company, trends = cfg.get("company", {}), cfg.get("trends", {})
+    logo = company.get("logo_path") or ""
+    if logo and not Path(logo).is_absolute():
+        logo = str(REPORTS_ROOT / logo)
+    return Branding(
+        company=company.get("name", ""), unit=company.get("unit", ""),
+        issued_by=company.get("issued_by", ""), logo_path=logo,
+        header_title=trends.get("header_title", "Vigilancia Tecnológica"),
+    )
+
+
+def main() -> int:
+    from common.settings import load_config
+
     if len(sys.argv) < 2:
-        print("Uso: python3 tech_trends_v2.py <data.json> [output.pdf]")
-        sys.exit(1)
+        print("Uso: python3 trends/tech_trends_v2.py <data.json> [salida.pdf]", file=sys.stderr)
+        return 2
+    data_file = Path(sys.argv[1])
+    if not data_file.is_file():
+        print(f"ERROR: archivo no encontrado: {data_file}", file=sys.stderr)
+        return 1
 
-    data_file = sys.argv[1]
-    if not os.path.exists(data_file):
-        print(f"ERROR: Archivo no encontrado: {data_file}")
-        sys.exit(1)
-
-    output_path = sys.argv[2] if len(sys.argv) > 2 else None
-
-    import traceback
-    try:
-        path = generate_report(data_file, output_path)
-        if path is None:
-            print("NO_DATA: Ninguna temática con señales trending reales")
-            sys.exit(0)
-        print(f"MEDIA:{path}")
-    except Exception as e:
-        print(f"ERROR generando PDF: {e}")
-        traceback.print_exc()
-        sys.exit(1)
+    cfg = load_config()
+    if len(sys.argv) > 2:
+        out_path = Path(sys.argv[2])
+    else:
+        prefix = cfg.get("trends", {}).get("filename_prefix", "informe_tendencias")
+        stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+        out_path = cfg["output"]["dir"] / f"{prefix}_{stamp}.pdf"
+    path = generate_report(data_file, out_path, branding_from_config(cfg))
+    print(path)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

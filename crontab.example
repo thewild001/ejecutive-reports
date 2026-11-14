@@ -1,10 +1,37 @@
-# Ejemplos de programación (ajusta horarios a tu organización).
-# Variante local (sin docker):
-0 8 * * 1,4    cd /opt/REPORTS && ./run.sh gespro  >> logs/gespro.log 2>&1
-0 8 * * 2      cd /opt/REPORTS && ./run.sh gitlab  >> logs/gitlab.log 2>&1
-0 9 1,15 * *   cd /opt/REPORTS && ./run.sh trends  >> logs/trends.log 2>&1
+# Programación con cron: instalar con `crontab -e` (ajusta la ruta y los horarios).
+# Cada línea invoca un wrapper de scripts/, que a su vez ejecuta el generador .py
+# y entrega el PDF por correo adjunto (config.yaml → delivery.*).
+#
+# El wrapper sale con código distinto de 0 si algo falla:
+#   3 = falló un canal de entrega · 4 = no hay canales habilitados
+#   5 = datos de tendencias desactualizados (trends.max_age_days)
+#   6 = GitLab: el servidor MCP no devolvió datos (no se envía un informe vacío)
+# y escribe su registro en logs/<reporte>.log. Los intentos se guardan en el
+# ledger SQLite output/.state/execution-ledger.sqlite3 con un run_id y estado.
+# Un lock ocupado produce SKIPPED_LOCKED y código 75 (no se considera éxito).
+# Para recibir avisos, define MAILTO: el wrapper emite un resumen de fallos a stderr.
+#
+# Variables útiles (también valen en .env): REPORTS_PROXY, REPORTS_PYTHON,
+# REPORTS_LOG_DIR, REPORTS_STATE_DB y REPORTS_REQUIRE_DELIVERY=0 (permitir ejecuciones sin envío).
+# Credenciales SMTP: SMTP_USER y SMTP_PASS en .env (nunca en el código ni en git).
+# El ledger/flock es local al host: no compartir output/.state en NFS ni entre hosts.
 
-# Variante Docker (usa docker compose run; no requiere Python en el host):
-0 8 * * 1,4    cd /opt/REPORTS && docker compose run --rm gespro  >> logs/gespro.log 2>&1
-0 8 * * 2      cd /opt/REPORTS && docker compose run --rm gitlab  >> logs/gitlab.log 2>&1
-0 9 1,15 * *   cd /opt/REPORTS && docker compose run --rm trends  >> logs/trends.log 2>&1
+SHELL=/bin/bash
+#MAILTO=admin@example.org
+REPORTS=/opt/REPORTS
+
+# Lunes y jueves, 08:00
+0 8 * * 1,4    $REPORTS/scripts/run_gespro_report.sh
+# Martes, 08:00
+0 8 * * 2      $REPORTS/scripts/run_gitlab_ejecutive_report.sh
+# Días 1 y 15, 09:00
+0 9 1,15 * *   $REPORTS/scripts/run_tech_trends_report.sh
+
+# OJO con "cada N días": `*/2` en el día del mes NO es "cada 2 días" (dispara los
+# días 1, 3, 5… 31 y repite 31→1 al cambiar de mes). Para intervalos reales usa
+# días de la semana (1,4) o fechas fijas (1,15).
+
+# Variante Docker (no requiere Python en el host; el contenedor ejecuta run.sh):
+#0 8 * * 1,4   cd $REPORTS && docker compose run --rm gespro
+#0 8 * * 2     cd $REPORTS && docker compose run --rm gitlab
+#0 9 1,15 * *  cd $REPORTS && docker compose run --rm trends

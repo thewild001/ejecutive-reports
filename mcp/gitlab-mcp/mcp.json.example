@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "gitlab-mcp": {
+      "command": "python",
+      "args": ["main.py"],
+      "cwd": "/ruta/absoluta/a/gitlab-mcp",
+      "env": {
+        "GITLAB_URL": "https://gitlab.example.com",
+        "GITLAB_TOKEN": "",
+        "GITLAB_VERIFY_SSL": "true",
+        "GITLAB_TIMEOUT": "30.0",
+        "GITLAB_DEFAULT_LIMIT": "50"
+      }
+    }
+  }
+}

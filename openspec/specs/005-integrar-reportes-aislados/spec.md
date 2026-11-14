@@ -14,6 +14,8 @@
 ### Requirement: Integrar reportes aislados por comportamiento real
 La suite DEBE integrar los tres scripts aislados según el reporte que realmente generan, no según el nombre del archivo: `gitlab/generate_gitlab_report.py` aporta el informe GESPRO/Redmine detallado; `gespro/generate_redmine_report.py` aporta un resumen ejecutivo de salud GitLab; y `trends/tech_trends_v2.py` aporta el boletín premium dinámico de tendencias. Las ideas y formatos útiles DEBEN quedar integrados en los entry points canónicos existentes (`gespro/gespro_report.py`, `gitlab/gitlab_report.py`, `trends/trends_report.py`) sin cambiar la interfaz del crontab.
 
+> Estado: integrado. Los generadores heredados viven ahora como `gespro/status_report.py`, `gitlab/portfolio_report.py` y `trends/tech_trends_v2.py`, parametrizados por `config.yaml`; los scripts originales se eliminaron (siguen en el historial de git).
+
 #### Scenario: mantener entry points canónicos
 - **WHEN** se ejecuta `run.sh gespro|gitlab|trends` o `python3 cli.py run all`
 - **THEN** los reportes usan la lógica integrada sin invocar los scripts aislados

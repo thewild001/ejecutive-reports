@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from common.settings import load_config, require_env
-from common.delivery import deliver
+from common.delivery import deliver, delivery_exit_code
 from common.settings import rotate_outputs
 from common.cache import ApiCache
 from common.exporters import export_rows
@@ -134,6 +134,8 @@ def collect(rm: RedmineAPI, pid: int, closed_names: set, period_days: int = 30) 
         "closed": total - total_open,
         "overdue": total_overdue,
         "health": (total - total_open) / total * 100 if total else 0.0,
+        "open_by_status": dict(Counter(field_name(i, "status") for i in issues
+                                       if field_name(i, "status").lower() not in closed_names)),
         "analytics": analyze_trends(issues, members, closed_names, period_days),
     }
 
@@ -148,9 +150,51 @@ def summary_table(projects: list[dict]) -> tuple[list[str], list[list]]:
 
 def build_pdf(projects: list[dict], cfg: dict, out_path: Path,
               deltas: list[str] | None = None) -> None:
-    from gespro.detailed_pdf import build_detailed_pdf
+    from gespro import status_report
 
-    build_detailed_pdf(projects, cfg, out_path, deltas)
+    status_report.configure(cfg)
+    status_report.generate_pdf(projects, out_path, deltas)
+
+
+def dashboard_payload(projects: list[dict]) -> tuple[dict, list[dict], dict]:
+    """(totales, proyectos, extra) que consume web/app.py."""
+    from collections import Counter
+
+    status, per_member = Counter(), {}
+    rows = []
+    for p in projects:
+        status.update(p["status_counts"])
+        for m in p["members"]:
+            d = per_member.setdefault(m["name"], {"name": m["name"], "open": 0, "closed": 0,
+                                                  "overdue": 0, "projects": 0})
+            d["open"] += m["open"]; d["closed"] += m["closed"]
+            d["overdue"] += m["overdue"]; d["projects"] += 1
+        an = p.get("analytics") or {}
+        rows.append({
+            "id": p["id"], "name": p["name"], "total": p["total"], "open": p["open"],
+            "closed": p["closed"], "overdue": p["overdue"], "progress": round(p["health"], 1),
+            "members": len(p["members"]), "status_counts": dict(p["status_counts"]),
+            "open_by_status": p.get("open_by_status", {}),
+            "windows": an.get("windows"), "velocity": an.get("velocity"),
+            "bottlenecks": an.get("bottlenecks", []),
+        })
+    total = sum(r["total"] for r in rows)
+    closed = sum(r["closed"] for r in rows)
+    win = [r["windows"] for r in rows if r["windows"]]
+    totals = {
+        "projects": len(rows), "tasks": total, "open": sum(r["open"] for r in rows),
+        "closed": closed, "overdue": sum(r["overdue"] for r in rows),
+        "progress": round(closed / total * 100, 1) if total else 0.0,
+        "members": len(per_member),
+        "created_current": sum(w["created_current"] for w in win),
+        "closed_current": sum(w["closed_current"] for w in win),
+        "created_previous": sum(w["created_previous"] for w in win),
+        "closed_previous": sum(w["closed_previous"] for w in win),
+    }
+    extra = {"status_counts": dict(status),
+             "workload": sorted(per_member.values(), key=lambda d: (-d["overdue"], -d["open"]))[:12],
+             "window_days": win[0]["days"] if win else None}
+    return totals, rows, extra
 
 
 def main() -> int:
@@ -205,6 +249,9 @@ def main() -> int:
         "overdue": "vencidas", "health": "salud %",
     })
     snapshots.save(out_dir, prefix, current)
+    from common import dashboard_data
+    d_totals, d_rows, d_extra = dashboard_payload(projects)
+    dashboard_data.save_dataset(out_dir, "gespro", d_totals, d_rows, d_extra)
 
     build_pdf(projects, cfg, out_path, deltas)
     log.info("PDF generado: %s", out_path)
@@ -216,8 +263,9 @@ def main() -> int:
     exts = tuple(f".{f}" for f in cfg.get("export", {}).get("formats", ["pdf"]))
     rotate_outputs(out_dir, prefix, cfg["output"].get("keep_last", 10), exts=exts)
 
-    deliver(out_path, cfg, "Informe de Estado de Proyectos (GESPRO/Redmine)")
-    return 0
+    results = deliver(out_path, cfg, "Informe de Estado de Proyectos (GESPRO/Redmine)",
+                      report_key="gespro")
+    return delivery_exit_code(results)
 
 
 if __name__ == "__main__":

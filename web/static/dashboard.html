@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de proyectos</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root {
+  --ink: #121c26;
+  --ink-2: #4a5866;
+  --ink-3: #7b8794;
+  --paper: #eef1f4;
+  --surface: #ffffff;
+  --line: #dbe1e7;
+  --line-2: #e8ecf0;
+  --accent: #2f4fe0;
+  --accent-soft: #e5eafd;
+  --ok: #1f8a5b;
+  --mid: #b87a06;
+  --bad: #c23b32;
+  --focus: #2f4fe0;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s-other: #9aa5b1;
+  --radius: 6px;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+:root[data-theme="dark"] {
+  --ink: #e7edf3;
+  --ink-2: #aab6c2;
+  --ink-3: #7d8a97;
+  --paper: #0d1319;
+  --surface: #141c24;
+  --line: #26323d;
+  --line-2: #1d2832;
+  --accent: #7b93ff;
+  --accent-soft: #1b2447;
+  --ok: #3ec68a;
+  --mid: #e0a73a;
+  --bad: #ff7b70;
+  --focus: #9db0ff;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s-other: #6b7886;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #e7edf3; --ink-2: #aab6c2; --ink-3: #7d8a97; --paper: #0d1319;
+    --surface: #141c24; --line: #26323d; --line-2: #1d2832; --accent: #7b93ff;
+    --accent-soft: #1b2447; --ok: #3ec68a; --mid: #e0a73a; --bad: #ff7b70; --focus: #9db0ff;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s-other: #6b7886;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 400 15px/1.5 var(--font);
+  font-variant-numeric: tabular-nums;
+}
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── barra superior ─────────────────────────────── */
+.top { background: var(--surface); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1240px; margin: 0 auto; padding: 18px 20px 0; }
+.brand { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.brand h1 { margin: 0; font-size: 22px; line-height: 1.2; font-weight: 650; letter-spacing: -0.01em; }
+.brand p { margin: 2px 0 0; color: var(--ink-2); font-size: 14px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chip {
+  display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; background: var(--surface);
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+.dot.ok { background: var(--ok); } .dot.mid { background: var(--mid); } .dot.bad { background: var(--bad); }
+.icon-btn {
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); border-radius: var(--radius);
+  height: 30px; padding: 0 10px; font: inherit; font-size: 13px; cursor: pointer;
+}
+.icon-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+.tabs { display: flex; gap: 4px; margin-top: 14px; overflow-x: auto; }
+.tab {
+  appearance: none; border: 0; background: none; font: inherit; font-weight: 550; color: var(--ink-2);
+  padding: 10px 14px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+
+main { max-width: 1240px; margin: 0 auto; padding: 22px 20px 56px; }
+section + section { margin-top: 34px; }
+h2 { margin: 0 0 4px; font-size: 17px; font-weight: 650; letter-spacing: -0.005em; }
+.sub { margin: 0 0 14px; color: var(--ink-2); font-size: 14px; max-width: 70ch; }
+
+/* ── mapa de salud (el elemento memorable) ───────── */
+.lane { margin-bottom: 22px; }
+.lane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.legend { display: flex; gap: 14px; font-size: 13px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.mosaic { display: flex; flex-wrap: wrap; gap: 6px; }
+.tile {
+  --band: var(--ink-3);
+  flex: var(--w, 1) 1 108px; min-width: 108px; min-height: 76px; padding: 10px 12px 9px;
+  background: color-mix(in srgb, var(--band) 13%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--band) 28%, var(--line));
+  border-bottom: 4px solid var(--band);
+  border-radius: var(--radius); display: flex; flex-direction: column; justify-content: space-between; gap: 6px;
+  text-align: left; font: inherit; color: var(--ink); cursor: pointer;
+}
+.tile:hover { border-color: var(--band); }
+.tile-name { font-size: 13px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.tile-val { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; line-height: 1; }
+.tile-val small { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
+.tile.ok { --band: var(--ok); } .tile.mid { --band: var(--mid); } .tile.bad { --band: var(--bad); }
+.arrive .tile { animation: arrive .5s cubic-bezier(.2,.7,.2,1) both; animation-delay: calc(var(--i, 0) * 28ms); }
+@keyframes arrive { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+
+/* ── franja de KPI (una sola pieza, sin tarjetas sueltas) ─ */
+.kpis {
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.kpi { padding: 14px 16px 12px; border-left: 1px solid var(--line-2); min-width: 0; }
+.kpi:first-child { border-left: 0; }
+.kpi-label { font-size: 13px; color: var(--ink-2); }
+.kpi-label b { font-weight: 600; color: var(--ink-3); }
+.kpi-val { font-size: 30px; font-weight: 650; letter-spacing: -0.025em; line-height: 1.15; margin-top: 2px; }
+.kpi-val small { font-size: 15px; font-weight: 500; color: var(--ink-2); }
+.kpi-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; min-height: 24px; }
+.delta { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+.delta.good { color: var(--ok); } .delta.worse { color: var(--bad); }
+.spark { display: block; width: 78px; height: 24px; flex: none; }
+.spark path { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.spark circle { fill: var(--accent); }
+
+/* ── disposición en columnas ─────────────────────── */
+.cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; min-width: 0; }
+.panel h3 { margin: 0 0 10px; font-size: 15px; font-weight: 650; }
+.scroll { overflow-x: auto; }
+
+/* ── tablas ──────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 9px 10px; text-align: right; border-bottom: 1px solid var(--line-2); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; white-space: normal; padding-left: 0; }
+th:last-child, td:last-child { padding-right: 0; }
+thead th { font-weight: 600; font-size: 13px; color: var(--ink-2); border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); }
+th button {
+  all: unset; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; font-weight: inherit; color: inherit;
+}
+th button:hover { color: var(--ink); }
+th button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+th[aria-sort="ascending"] button::after { content: "▲"; font-size: 9px; }
+th[aria-sort="descending"] button::after { content: "▼"; font-size: 9px; }
+tbody tr:hover td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+td.name { font-weight: 550; }
+td.name small { display: block; color: var(--ink-3); font-weight: 400; font-size: 12.5px; }
+.neg { color: var(--bad); font-weight: 600; }
+.mut { color: var(--ink-3); }
+
+.meter { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.meter-bar { width: 84px; height: 6px; background: var(--line-2); border-radius: 3px; overflow: hidden; }
+.meter-bar i { display: block; height: 100%; border-radius: 3px; background: var(--band, var(--ok)); }
+.meter.ok { --band: var(--ok); } .meter.mid { --band: var(--mid); } .meter.bad { --band: var(--bad); }
+.meter-num { min-width: 42px; text-align: right; font-weight: 600; }
+.pill { display: inline-block; font-size: 12.5px; font-weight: 600; border-radius: 999px; padding: 1px 9px; }
+.pill.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.pill.mid { color: var(--mid); background: color-mix(in srgb, var(--mid) 16%, transparent); }
+.pill.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+
+/* ── barras horizontales ─────────────────────────── */
+.hbars { display: grid; gap: 9px; }
+.hbar { display: grid; grid-template-columns: minmax(80px, 150px) 1fr auto; gap: 10px; align-items: center; font-size: 14px; }
+.hbar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar-track { height: 10px; background: var(--line-2); border-radius: 3px; position: relative; overflow: hidden; }
+.hbar-fill, .hbar-over { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; }
+.hbar-fill { background: var(--s1); }
+.hbar-over { background: var(--bad); }
+.hbar-val { font-weight: 600; min-width: 30px; text-align: right; }
+.stack { display: flex; height: 16px; border-radius: 4px; overflow: hidden; gap: 2px; margin: 4px 0 12px; }
+.stack i { display: block; min-width: 3px; }
+.keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px 16px; font-size: 14px; }
+.keys span { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.keys i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.keys b { margin-left: auto; font-weight: 600; }
+
+.pair { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.pair-col h4 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.pair-row { display: grid; grid-template-columns: 52px 1fr 38px; gap: 8px; align-items: center; font-size: 13px; margin-bottom: 7px; }
+.pair-track { height: 12px; background: var(--line-2); border-radius: 3px; overflow: hidden; }
+.pair-track i { display: block; height: 100%; }
+.pair-cur { background: var(--accent); } .pair-prev { background: var(--ink-3); opacity: .55; }
+
+/* ── alertas ─────────────────────────────────────── */
+.alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.alerts li { display: grid; grid-template-columns: 84px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line-2); font-size: 14px; }
+.alerts li:last-child { border-bottom: 0; }
+.alerts small { color: var(--ink-3); display: block; }
+
+.empty { border: 1px dashed var(--line); border-radius: var(--radius); padding: 22px 20px; color: var(--ink-2); background: var(--surface); }
+.empty b { color: var(--ink); }
+.empty code { background: var(--paper); border-radius: 4px; padding: 1px 6px; font-size: 13px; }
+.foot-note { color: var(--ink-3); font-size: 13px; margin-top: 10px; }
+
+/* ── gráficas ────────────────────────────────────── */
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.chart h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.chart h3 span { font-weight: 500; font-size: 13px; color: var(--ink-3); }
+svg.ch { display: block; width: 100%; height: auto; overflow: visible; }
+.ch .grid { stroke: var(--line-2); stroke-width: 1; }
+.ch .axis { stroke: var(--line); stroke-width: 1; }
+.ch text { fill: var(--ink-3); font: 400 11px var(--font); }
+.ch .lbl { fill: var(--ink); font-weight: 650; font-size: 12px; }
+.ch .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ch .area { opacity: .12; }
+.ch .cross { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; }
+.ch .dotf { opacity: 0; stroke: var(--surface); stroke-width: 2; }
+.ch .hit { fill: transparent; cursor: crosshair; }
+.ch circle.pt { stroke: var(--surface); stroke-width: 2; }
+.ch circle.pt:hover { stroke: var(--ink); }
+.mono-note { color: var(--ink-3); font-size: 13px; margin: 6px 0 0; }
+details.tbl { margin-top: 8px; font-size: 13px; color: var(--ink-2); }
+details.tbl summary { cursor: pointer; width: max-content; }
+details.tbl table { margin-top: 6px; font-size: 13px; }
+.donut-wrap { display: grid; grid-template-columns: 170px 1fr; gap: 18px; align-items: center; }
+.donut-c { font: 650 22px var(--font); fill: var(--ink); } .donut-s { font: 400 11px var(--font); fill: var(--ink-3); }
+.cols-bars { display: flex; align-items: flex-end; gap: 10px; height: 150px; padding-top: 8px; border-bottom: 1px solid var(--line); }
+.cb { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 5px; }
+.cb-pair { display: flex; align-items: flex-end; gap: 2px; width: 100%; justify-content: center; flex: 1; }
+.cb-pair i { display: block; width: 45%; max-width: 22px; min-height: 2px; border-radius: 4px 4px 0 0; }
+.cb-x { font-size: 11px; color: var(--ink-3); white-space: nowrap; margin-top: 4px; }
+.cbwrap { display: flex; gap: 10px; }
+.cbwrap .cb-x { text-align: center; flex: 1; }
+.legend-i { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin: 8px 0 0; }
+.legend-i i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.stack.big { height: 26px; margin: 6px 0 4px; }
+.stack.big i { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 650; }
+.hrow { margin-bottom: 14px; } .hrow:last-child { margin-bottom: 0; }
+.hrow b { font-size: 14px; }
+#tip { position: fixed; z-index: 20; pointer-events: none; background: var(--ink); color: var(--paper); font-size: 12.5px; line-height: 1.35; padding: 6px 9px; border-radius: 5px; max-width: 240px; opacity: 0; transition: opacity .08s; }
+#tip b { font-weight: 650; }
+
+/* ── filtros ─────────────────────────────────────── */
+.fbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 22px; }
+.fbar input[type=search], .fbar select {
+  height: 32px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink);
+  font: inherit; font-size: 14px; padding: 0 10px;
+}
+.fbar input[type=search] { width: 220px; max-width: 100%; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.seg button { appearance: none; border: 0; border-left: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font: inherit; font-size: 13.5px; padding: 0 12px; height: 30px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.seg button:first-child { border-left: 0; }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+.seg i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-2); cursor: pointer; }
+.chk input { width: 16px; height: 16px; accent-color: var(--accent); }
+.fcount { margin-left: auto; font-size: 13px; color: var(--ink-3); }
+.fbar .icon-btn[hidden] { display: none; }
+
+@media (max-width: 1080px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .kpi:nth-child(4) { border-left: 0; } .kpi:nth-child(n+4) { border-top: 1px solid var(--line-2); } }
+@media (max-width: 860px) { .cols { grid-template-columns: 1fr; } .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) {
+  .fbar input[type=search] { width: 100%; } .fcount { margin-left: 0; width: 100%; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi { border-left: 0 !important; border-top: 1px solid var(--line-2); }
+  .kpi:nth-child(-n+2) { border-top: 0; } .kpi:nth-child(even) { border-left: 1px solid var(--line-2) !important; }
+  .hbar { grid-template-columns: 90px 1fr auto; }
+  main, .top-in { padding-left: 14px; padding-right: 14px; }
+  .pair { grid-template-columns: 1fr; } .grid3 { grid-template-columns: 1fr; } .donut-wrap { grid-template-columns: 1fr; justify-items: center; }
+}
+@media (prefers-reduced-motion: reduce) { .arrive .tile { animation: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <div>
+        <h1 id="title">Panel de proyectos</h1>
+        <p id="subtitle">Tareas de Redmine y repositorios de GitLab</p>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Secciones">
+      <button class="tab" role="tab" data-tab="resumen">Resumen</button>
+      <button class="tab" role="tab" data-tab="tareas">Tareas</button>
+      <button class="tab" role="tab" data-tab="codigo">Código</button>
+      <button class="tab" role="tab" data-tab="evolucion">Evolución y uso</button>
+      <button class="tab" role="tab" data-tab="informes">Informes</button>
+    </nav>
+  </div>
+</header>
+<main id="main" tabindex="-1"></main>
+<div id="tip" role="tooltip"></div>
+
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const nf = new Intl.NumberFormat("es");
+const num = (v) => (v == null || v === "" ? "—" : nf.format(v));
+const pct = (v) => (v == null ? "—" : `${nf.format(Math.round(v * 10) / 10)}%`);
+const STALE_HOURS = 72;
+
+let DATA = null;
+let tab = "resumen";
+const sortState = {};
+
+/* ── utilidades ─────────────────────────────────── */
+function band(value, [good, regular]) { return value >= good ? "ok" : value >= regular ? "mid" : "bad"; }
+function ago(iso, now) {
+  const h = (new Date(now) - new Date(iso)) / 36e5;
+  if (!isFinite(h)) return "sin fecha";
+  if (h < 1) return "hace minutos";
+  if (h < 48) return `hace ${Math.round(h)} h`;
+  return `hace ${Math.round(h / 24)} días`;
+}
+function hoursOld(iso, now) { return (new Date(now) - new Date(iso)) / 36e5; }
+
+function spark(history, key) {
+  const pts = (history || []).map((h) => h[key]).filter((v) => typeof v === "number");
+  if (pts.length < 2) return `<span class="spark" aria-hidden="true"></span>`;
+  const w = 78, h = 24, p = 3, min = Math.min(...pts), max = Math.max(...pts), span = max - min || 1;
+  const xy = pts.map((v, i) => [p + (i * (w - 2 * p)) / (pts.length - 1), h - p - ((v - min) / span) * (h - 2 * p)]);
+  const d = xy.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  const [lx, ly] = xy[xy.length - 1];
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path d="${d}"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.4"/></svg>`;
+}
+/* lowerIsBetter: para vencidas, stale, etc. */
+function delta(history, key, lowerIsBetter, suffix = "") {
+  const pts = (history || []).map((h) => h[key]).filter((v) => typeof v === "number");
+  if (pts.length < 2) return `<span class="delta">primera lectura</span>`;
+  const d = Math.round((pts[pts.length - 1] - pts[pts.length - 2]) * 10) / 10;
+  if (d === 0) return `<span class="delta">sin cambios</span>`;
+  const good = lowerIsBetter ? d < 0 : d > 0;
+  return `<span class="delta ${good ? "good" : "worse"}">${d > 0 ? "▲" : "▼"} ${nf.format(Math.abs(d))}${suffix} vs. anterior</span>`;
+}
+
+function kpi(label, source, value, unit, history, key, lowerIsBetter, deltaSuffix) {
+  const foot = history === null ? `<span class="delta">según el filtro</span>` : `${delta(history, key, lowerIsBetter, deltaSuffix)}${spark(history, key)}`;
+  return `<div class="kpi">
+    <div class="kpi-label"><b>${source}</b> ${label}</div>
+    <div class="kpi-val">${value}${unit ? `<small> ${unit}</small>` : ""}</div>
+    <div class="kpi-foot">${foot}</div>
+  </div>`;
+}
+
+/* ── filtros ────────────────────────────────────── */
+const F = { q: "", band: "all", group: "all", overdue: false, quiet: false };
+const norm = (v) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const filtering = () => !!(F.q || F.band !== "all" || F.group !== "all" || F.overdue || F.quiet);
+const QUIET_DAYS = 7;
+function passG(p) {
+  if (F.q && !norm(p.name).includes(norm(F.q))) return false;
+  if (F.band !== "all" && band(p.progress, DATA.bands.gespro) !== F.band) return false;
+  if (F.overdue && !p.overdue) return false;
+  return true;
+}
+function passL(p) {
+  if (F.q && !norm(`${p.name} ${p.subgroup}`).includes(norm(F.q))) return false;
+  if (F.band !== "all" && band(p.score, DATA.bands.gitlab) !== F.band) return false;
+  if (F.group !== "all" && p.subgroup !== F.group) return false;
+  if (F.quiet && !(p.days_since == null || p.days_since > QUIET_DAYS)) return false;
+  return true;
+}
+const sum = (a, k) => a.reduce((s, x) => s + (x[k] || 0), 0);
+const NOMATCH = `<div class="empty"><b>Ningún proyecto coincide con el filtro.</b> Cambia la búsqueda o pulsa «Restablecer».</div>`;
+
+function filterBar() {
+  const l = DATA.sources.gitlab;
+  const groups = [...new Set((l?.projects || []).map((p) => p.subgroup).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
+  const forTasks = tab === "resumen" || tab === "tareas", forCode = tab === "resumen" || tab === "codigo";
+  const seg = [["all", "Todos", ""], ["ok", "Buena", "var(--ok)"], ["mid", "Regular", "var(--mid)"], ["bad", "Crítica", "var(--bad)"]]
+    .map(([k, t, c]) => `<button type="button" data-band="${k}" aria-pressed="${F.band === k}">${c ? `<i style="background:${c}"></i>` : ""}${t}</button>`).join("");
+  return `<div class="fbar" role="search" aria-label="Filtros">
+    <label class="sr" for="f-q">Buscar proyecto</label>
+    <input id="f-q" type="search" placeholder="Buscar proyecto" value="${esc(F.q)}" autocomplete="off">
+    <div class="seg" role="group" aria-label="Estado de salud">${seg}</div>
+    ${forCode && groups.length > 1 ? `<label class="sr" for="f-group">Subgrupo de GitLab</label><select id="f-group"><option value="all">Todos los subgrupos</option>${groups.map((g) => `<option value="${esc(g)}"${F.group === g ? " selected" : ""}>${esc(g)}</option>`).join("")}</select>` : ""}
+    ${forTasks && DATA.sources.gespro ? `<label class="chk"><input type="checkbox" id="f-overdue"${F.overdue ? " checked" : ""}>Solo con tareas vencidas</label>` : ""}
+    ${forCode && l ? `<label class="chk"><input type="checkbox" id="f-quiet"${F.quiet ? " checked" : ""}>Sin commits en ${QUIET_DAYS} días</label>` : ""}
+    <button type="button" class="icon-btn" id="f-reset">Restablecer</button>
+    <span class="fcount" id="f-count" aria-live="polite"></span></div>`;
+}
+function syncBar() {
+  document.querySelectorAll("[data-band]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.band === F.band)));
+  const g = DATA.sources.gespro, l = DATA.sources.gitlab, parts = [];
+  if (g && tab !== "codigo") parts.push(`Redmine ${g.projects.filter(passG).length} de ${g.projects.length}`);
+  if (l && tab !== "tareas") parts.push(`GitLab ${l.projects.filter(passL).length} de ${l.projects.length}`);
+  const c = $("#f-count"); if (c) c.textContent = parts.length ? `Proyectos: ${parts.join(" · ")}` : "";
+  const r = $("#f-reset"); if (r) r.hidden = !filtering();
+}
+
+function sortable(id, rows, cols, defaultKey, defaultDir = "desc") {
+  const st = (sortState[id] ||= { key: defaultKey, dir: defaultDir });
+  const col = cols.find((c) => c.key === st.key) || cols[0];
+  const get = col.sort || ((r) => r[col.key]);
+  const sorted = [...rows].sort((a, b) => {
+    const x = get(a), y = get(b);
+    const r = typeof x === "string" ? x.localeCompare(y, "es") : (x ?? -Infinity) - (y ?? -Infinity);
+    return st.dir === "asc" ? r : -r;
+  });
+  const head = cols.map((c) => `<th scope="col" aria-sort="${c.key === st.key ? (st.dir === "asc" ? "ascending" : "descending") : "none"}"><button type="button" data-sort="${id}:${c.key}">${c.label}</button></th>`).join("");
+  const body = sorted.map((r) => `<tr>${cols.map((c) => `<td class="${c.cls || ""}">${c.render(r)}</td>`).join("")}</tr>`).join("");
+  return `<div class="scroll"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+function meter(value, bands) {
+  const b = band(value, bands);
+  return `<div class="meter ${b}"><span class="meter-num">${pct(value)}</span><span class="meter-bar"><i style="width:${Math.max(2, Math.min(100, value))}%"></i></span></div>`;
+}
+
+function hbars(items, max, opts = {}) {
+  if (!items.length) return `<p class="mut">Sin datos.</p>`;
+  return `<div class="hbars">${items.map((it) => `
+    <div class="hbar"><span class="hbar-name" title="${esc(it.name)}">${esc(it.name)}</span>
+      <span class="hbar-track"><span class="hbar-fill" style="width:${(it.value / max) * 100}%"></span>${it.over ? `<span class="hbar-over" style="width:${(it.over / max) * 100}%"></span>` : ""}</span>
+      <span class="hbar-val">${num(it.value)}${opts.suffix || ""}</span></div>`).join("")}</div>`;
+}
+
+function empty(source, script) {
+  return `<div class="empty"><b>Aún no hay datos de ${source}.</b> Se publican en cuanto corre el reporte programado. Para generarlos ahora, ejecuta <code>${script}</code>.</div>`;
+}
+
+/* ── mosaico ────────────────────────────────────── */
+function mosaic(items, bands, valueOf, unit, weightOf) {
+  if (!items.length) return NOMATCH;
+  const ws = items.map(weightOf), max = Math.max(...ws, 1);
+  const order = items.map((it, i) => ({ it, w: ws[i] })).sort((a, b) => valueOf(a.it) - valueOf(b.it));
+  return `<div class="mosaic">${order.map(({ it, w }, i) => {
+    const v = valueOf(it), b = band(v, bands);
+    const flex = (1 + (w / max) * 2.4).toFixed(2);
+    const label = b === "ok" ? "buena" : b === "mid" ? "regular" : "crítica";
+    return `<button type="button" class="tile ${b}" style="--w:${flex};--i:${i}" data-go="${esc(it.name)}" title="${esc(it.name)}: ${pct(v)} (${label})">
+      <span class="tile-name">${esc(it.name)}</span><span class="tile-val">${Math.round(v)}<small>${unit}</small></span></button>`;
+  }).join("")}</div>`;
+}
+const LEGEND = (b) => `<div class="legend" aria-hidden="true"><span><i style="background:var(--ok)"></i>≥ ${b[0]}</span><span><i style="background:var(--mid)"></i>${b[1]}–${b[0] - 1}</span><span><i style="background:var(--bad)"></i>< ${b[1]}</span></div>`;
+
+/* ── gráficas (SVG en línea) ─────────────────────── */
+const dfmt = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" });
+const dlong = new Intl.DateTimeFormat("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const SER = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"];
+const CH = {};          // registro de gráficas de línea para el cursor
+let chSeq = 0;
+const niceMax = (v) => { if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log10(v)); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; };
+
+/* línea con área, rejilla tenue, valor final rotulado y cursor con tooltip */
+function lineChart(title, history, key, { unit = "", color = SER[0], fixed = null, fmt = (v) => num(Math.round(v * 10) / 10) } = {}) {
+  const pts = (history || []).filter((h) => typeof h[key] === "number" && h.ts).map((h) => ({ t: new Date(h.ts).getTime(), v: h[key] }));
+  const head = `<h3>${title}<span>${pts.length ? `${fmt(pts[pts.length - 1].v)}${unit}` : ""}</span></h3>`;
+  if (pts.length < 2) return `<div class="panel chart">${head}<p class="mut">La línea aparece a partir de la segunda ejecución. Hasta ahora hay ${pts.length}.</p></div>`;
+  const W = 360, H = 150, L = 34, R = 34, T = 10, B = 22;
+  const vs = pts.map((p) => p.v);
+  let lo = fixed ? fixed[0] : Math.min(...vs), hi = fixed ? fixed[1] : Math.max(...vs);
+  if (!fixed) {
+    const step = niceMax((hi - lo || Math.abs(hi) || 1) / 2) / (hi - lo > 4 ? 1 : 2);
+    lo = Math.max(0, Math.floor(lo / step) * step); hi = Math.ceil(hi / step) * step; if (hi === lo) hi = lo + step;
+  }
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t, span = t1 - t0 || 1;
+  const X = (t) => L + ((t - t0) / span) * (W - L - R), Y = (v) => T + (1 - (v - lo) / (hi - lo || 1)) * (H - T - B);
+  const xy = pts.map((p) => [X(p.t), Y(p.v)]);
+  const d = xy.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  const area = `${d} L${xy[xy.length - 1][0].toFixed(1)} ${H - B} L${xy[0][0].toFixed(1)} ${H - B} Z`;
+  const ticks = [lo, (lo + hi) / 2, hi];
+  const grid = ticks.map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/><text x="${L - 6}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end">${fmt(v)}</text>`).join("");
+  const [lx, ly] = xy[xy.length - 1];
+  const id = `lc${++chSeq}`;
+  CH[id] = { pts, xy, unit, fmt, title, W, color };
+  const rows = pts.slice(-12).map((p) => `<tr><td>${dlong.format(p.t)}</td><td>${fmt(p.v)}${unit}</td></tr>`).join("");
+  return `<div class="panel chart">${head}
+    <svg class="ch lc" id="${id}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}: de ${fmt(pts[0].v)}${unit} a ${fmt(pts[pts.length - 1].v)}${unit} en ${pts.length} ejecuciones">
+      ${grid}<line class="axis" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/>
+      <text x="${L}" y="${H - 6}">${dfmt.format(t0)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">${dfmt.format(t1)}</text>
+      <path class="area" d="${area}" fill="${color}"/><path class="line" d="${d}" stroke="${color}"/>
+      <line class="cross" y1="${T}" y2="${H - B}"/><circle class="dotf" r="5" fill="${color}"/>
+      <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4" fill="${color}" stroke="var(--surface)" stroke-width="2"/>
+      <text class="lbl" x="${(lx + 8).toFixed(1)}" y="${(ly + 4).toFixed(1)}">${fmt(pts[pts.length - 1].v)}</text>
+      <rect class="hit" x="${L}" y="0" width="${W - L - R}" height="${H}"/></svg>
+    <details class="tbl"><summary>Ver como tabla</summary><table><thead><tr><th>Ejecución</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table></details></div>`;
+}
+
+/* anillo con huecos de 2px y leyenda directa con cifras */
+function donut(entries, label) {
+  const tot = entries.reduce((s, [, n]) => s + n, 0);
+  if (!tot) return `<p class="mut">Sin datos.</p>`;
+  const top = entries.slice(0, 4), rest = entries.slice(4).reduce((s, [, n]) => s + n, 0);
+  const items = rest ? [...top, ["Otros", rest]] : top;
+  const col = (i) => (items[i][0] === "Otros" ? "var(--s-other)" : SER[i]);
+  const r = 62, C = 2 * Math.PI * r;
+  let off = 0;
+  const arcs = items.map(([k, n], i) => {
+    const len = (n / tot) * C, gap = items.length > 1 ? 2 : 0;
+    const a = `<circle cx="80" cy="80" r="${r}" fill="none" stroke="${col(i)}" stroke-width="20" stroke-dasharray="${Math.max(len - gap, 0.5)} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 80 80)" data-tip="<b>${esc(k)}</b><br>${num(n)} (${Math.round((n / tot) * 100)}%)"/>`;
+    off += len; return a;
+  }).join("");
+  return `<div class="donut-wrap"><svg class="ch" viewBox="0 0 160 160" role="img" aria-label="${esc(label)}" style="max-width:170px">${arcs}
+    <text class="donut-c" x="80" y="82" text-anchor="middle" style="fill:var(--ink)">${num(tot)}</text><text class="donut-s" x="80" y="99" text-anchor="middle">${esc(label)}</text></svg>
+    <div class="keys" style="grid-template-columns:1fr">${items.map(([k, n], i) => `<span><i style="background:${col(i)}"></i>${esc(k)}<b>${num(n)} · ${Math.round((n / tot) * 100)}%</b></span>`).join("")}</div></div>`;
+}
+
+/* dispersión: cada punto es un proyecto, coloreado por su estado de salud */
+function scatter(rows, { x, y, xLabel, yLabel, yMax = 100, bands, name, tip }) {
+  if (!rows.length) return NOMATCH;
+  const W = 480, H = 250, L = 40, R = 12, T = 10, B = 38;
+  const xMax = niceMax(Math.max(...rows.map(x), 1));
+  const X = (v) => L + (v / xMax) * (W - L - R), Y = (v) => T + (1 - v / yMax) * (H - T - B);
+  const grid = [0, 25, 50, 75, 100].map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v * yMax / 100).toFixed(1)}" y2="${Y(v * yMax / 100).toFixed(1)}"/><text x="${L - 6}" y="${(Y(v * yMax / 100) + 4).toFixed(1)}" text-anchor="end">${Math.round(v * yMax / 100)}</text>`).join("");
+  const xt = [0, 0.5, 1].map((f) => `<text x="${X(f * xMax).toFixed(1)}" y="${H - B + 15}" text-anchor="${f === 0 ? "start" : f === 1 ? "end" : "middle"}">${num(Math.round(f * xMax))}</text>`).join("");
+  const col = { ok: "var(--ok)", mid: "var(--mid)", bad: "var(--bad)" };
+  const dots = rows.map((r) => `<circle class="pt" cx="${X(x(r)).toFixed(1)}" cy="${Y(y(r)).toFixed(1)}" r="6" fill="${col[band(y(r), bands)]}" data-tip="${esc(tip(r))}"/>`).join("");
+  return `<svg class="ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(yLabel)} frente a ${esc(xLabel)} por proyecto">${grid}<line class="axis" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/>${xt}
+    <text x="${(L + W - R) / 2}" y="${H - 4}" text-anchor="middle">${esc(xLabel)}</text><text x="10" y="${(T + H - B) / 2}" text-anchor="middle" transform="rotate(-90 10 ${(T + H - B) / 2})">${esc(yLabel)}</text>${dots}</svg>
+    <div class="legend-i"><span><i style="background:var(--ok)"></i>Buena</span><span><i style="background:var(--mid)"></i>Regular</span><span><i style="background:var(--bad)"></i>Crítica</span></div>`;
+}
+
+/* reparto de proyectos por estado de salud, una barra por sistema */
+function healthStack(label, items, valueOf, bands) {
+  const c = { ok: 0, mid: 0, bad: 0 };
+  items.forEach((p) => { c[band(valueOf(p), bands)]++; });
+  const tot = items.length || 1, seg = [["ok", "Buena", "var(--ok)"], ["mid", "Regular", "var(--mid)"], ["bad", "Crítica", "var(--bad)"]];
+  return `<div class="hrow"><b>${label}</b><div class="stack big" role="img" aria-label="${label}: ${seg.map(([k, t]) => `${c[k]} ${t.toLowerCase()}`).join(", ")}">${seg.filter(([k]) => c[k]).map(([k, t, col]) => `<i style="flex:${c[k]};background:${col}" data-tip="<b>${t}</b><br>${c[k]} de ${items.length} proyectos">${c[k]}</i>`).join("")}</div>
+    <div class="legend-i">${seg.map(([k, t, col]) => `<span><i style="background:${col}"></i>${t} ${c[k]}</span>`).join("")}</div></div>`;
+}
+
+/* columnas agrupadas: ejecuciones registradas por semana */
+function weekBars(activity) {
+  const runs = activity?.runs || {};
+  const weeks = [...new Set(Object.values(runs).flatMap((r) => r.per_week.map((w) => w.week)))].sort();
+  if (!weeks.length) return `<p class="mut">Aún no hay ejecuciones registradas.</p>`;
+  const get = (src, wk) => runs[src]?.per_week.find((w) => w.week === wk)?.runs || 0;
+  const mx = Math.max(...weeks.flatMap((w) => [get("gespro", w), get("gitlab", w)]), 1);
+  const cols = weeks.map((w) => `<div class="cb"><div class="cb-pair">${[["gespro", "var(--s1)", "Redmine"], ["gitlab", "var(--s2)", "GitLab"]].map(([k, c, n]) => `<i style="height:${(get(k, w) / mx) * 100}%;background:${c}" data-tip="<b>${n}</b> · ${w}<br>${get(k, w)} ejecuciones"></i>`).join("")}</div></div>`).join("");
+  return `<div class="cols-bars" role="img" aria-label="Ejecuciones por semana">${cols}</div><div class="cbwrap">${weeks.map((w) => `<span class="cb-x">${w.slice(5)}</span>`).join("")}</div>
+    <div class="legend-i"><span><i style="background:var(--s1)"></i>Redmine</span><span><i style="background:var(--s2)"></i>GitLab</span></div>`;
+}
+
+/* tooltip global: marcas con data-tip y cursor de las líneas */
+const tip = () => $("#tip");
+function showTip(html, x, y) {
+  const t = tip(); t.innerHTML = html; t.style.opacity = 1;
+  const w = t.offsetWidth, h = t.offsetHeight;
+  t.style.left = `${Math.min(innerWidth - w - 8, Math.max(8, x + 12))}px`;
+  t.style.top = `${Math.max(8, y - h - 10)}px`;
+}
+const hideTip = () => { const t = tip(); if (t) t.style.opacity = 0; };
+document.addEventListener("pointermove", (e) => {
+  const lc = e.target.closest?.("svg.lc");
+  if (lc) {
+    const c = CH[lc.id], r = lc.getBoundingClientRect(), sx = ((e.clientX - r.left) / r.width) * c.W;
+    let best = 0; c.xy.forEach(([x], i) => { if (Math.abs(x - sx) < Math.abs(c.xy[best][0] - sx)) best = i; });
+    const [x, y] = c.xy[best], p = c.pts[best];
+    const cross = lc.querySelector(".cross"), dot = lc.querySelector(".dotf");
+    cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.style.opacity = 1;
+    dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.style.opacity = 1;
+    return showTip(`<b>${c.fmt(p.v)}${c.unit}</b><br>${dlong.format(p.t)}`, e.clientX, e.clientY);
+  }
+  const m = e.target.closest?.("[data-tip]");
+  if (m) return showTip(m.dataset.tip, e.clientX, e.clientY);
+  hideTip();
+  document.querySelectorAll("svg.lc .cross, svg.lc .dotf").forEach((n) => { n.style.opacity = 0; });
+});
+document.addEventListener("pointerleave", hideTip, true);
+
+/* ── vistas ─────────────────────────────────────── */
+function viewResumen() {
+  const { gespro: g, gitlab: l } = DATA.sources;
+  if (!g && !l) return empty("ningún sistema", "scripts/run_gespro_report.sh o scripts/run_gitlab_ejecutive_report.sh");
+  let html = "";
+  const gp = g ? g.projects.filter(passG) : [], lp = l ? l.projects.filter(passL) : [];
+  const flt = filtering();
+
+  html += `<section class="arrive"><h2>Mapa de salud</h2>
+    <p class="sub">Cada recuadro es un proyecto; los más grandes mueven más trabajo. Los de peor estado aparecen primero.</p>`;
+  html += `<div class="lane"><div class="lane-head"><b>Avance de tareas · Redmine</b>${g ? LEGEND(DATA.bands.gespro) : ""}</div>`
+    + (g ? mosaic(gp, DATA.bands.gespro, (p) => p.progress, "%", (p) => p.total) : empty("GESPRO", "scripts/run_gespro_report.sh")) + `</div>`;
+  html += `<div class="lane"><div class="lane-head"><b>Salud del repositorio · GitLab</b>${l ? LEGEND(DATA.bands.gitlab) : ""}</div>`
+    + (l ? mosaic(lp, DATA.bands.gitlab, (p) => p.score, "/100", (p) => p.total_commits || 1) : empty("GitLab", "scripts/run_gitlab_ejecutive_report.sh")) + `</div></section>`;
+
+  if (g || l) {
+    html += `<section><h2>Reparto de salud</h2><p class="sub">Cuántos proyectos están en cada estado${flt ? " (solo los filtrados)" : ""}.</p><div class="panel">
+      ${g ? healthStack("Redmine · avance de tareas", gp, (p) => p.progress, DATA.bands.gespro) : ""}${l ? healthStack("GitLab · salud del repositorio", lp, (p) => p.score, DATA.bands.gitlab) : ""}</div></section>`;
+  }
+  let gt = g?.totals || {}, lt = l?.totals || {};
+  if (flt && g) {
+    const tot = sum(gp, "total");
+    gt = { open: sum(gp, "open"), overdue: sum(gp, "overdue"), progress: tot ? (sum(gp, "closed") / tot) * 100 : 0 };
+  }
+  if (flt && l) {
+    const pp = lp.filter((p) => p.pipelines_total);
+    lt = { avg_health: lp.length ? sum(lp, "score") / lp.length : 0, mrs_open: sum(lp, "mrs_open"), pipelines_ok: pp.length ? sum(pp, "pipelines_ok") / pp.length : 0 };
+  }
+  const H = (h) => (flt ? null : h);
+  const cells = [];
+  if (g) {
+    cells.push(kpi("tareas abiertas", "Redmine", num(gt.open), "", H(g.history), "open", true));
+    cells.push(kpi("tareas vencidas", "Redmine", `<span class="${gt.overdue ? "neg" : ""}">${num(gt.overdue)}</span>`, "", H(g.history), "overdue", true));
+    cells.push(kpi("avance global", "Redmine", num(Math.round(gt.progress)), "%", H(g.history), "progress", false, " pts"));
+  }
+  if (l) {
+    cells.push(kpi("salud media", "GitLab", num(Math.round(lt.avg_health)), "/100", H(l.history), "avg_health", false, " pts"));
+    cells.push(kpi("MRs abiertos", "GitLab", num(lt.mrs_open), "", H(l.history), "mrs_open", true));
+    cells.push(kpi("pipelines correctos", "GitLab", num(Math.round(lt.pipelines_ok)), "%", H(l.history), "pipelines_ok", false, " pts"));
+  }
+  html += `<section><h2>Indicadores</h2><p class="sub">${flt ? "Calculados solo con los proyectos que cumplen el filtro; sin comparación con ejecuciones anteriores." : "Con la variación respecto a la ejecución anterior y la evolución de las últimas ejecuciones."}</p>
+    <div class="kpis" style="grid-template-columns:repeat(${cells.length}, minmax(0,1fr))" id="kpis">${cells.join("")}</div></section>`;
+
+  const overdue = gp.filter((p) => p.overdue).sort((a, b) => b.overdue - a.overdue).slice(0, 6);
+  const names = new Set(lp.map((p) => p.name));
+  const alerts = (l?.extra?.alerts || []).filter((a) => !flt || names.has(a.project)).slice(0, 6);
+  html += `<section><h2>Requiere atención</h2><div class="cols">
+    <div class="panel"><h3>Proyectos con tareas vencidas</h3>${overdue.length
+      ? hbars(overdue.map((p) => ({ name: p.name, value: p.overdue })), Math.max(...overdue.map((p) => p.overdue)))
+      : `<p class="mut">${g ? "Ningún proyecto tiene tareas vencidas." : "Sin datos de Redmine."}</p>`}</div>
+    <div class="panel"><h3>Alertas de repositorios</h3>${alerts.length
+      ? `<ul class="alerts">${alerts.map(alertItem).join("")}</ul>`
+      : `<p class="mut">${l ? "Sin alertas." : "Sin datos de GitLab."}</p>`}</div></div></section>`;
+  return html;
+}
+
+function alertItem(a) {
+  const cls = a.sev === "CRITICO" ? "bad" : a.sev === "ATENCION" ? "mid" : "ok";
+  const txt = a.sev === "CRITICO" ? "Crítica" : a.sev === "ATENCION" ? "Atención" : "Info";
+  return `<li><span><span class="pill ${cls}">${txt}</span></span><span>${esc(a.title)}<small>${esc(a.project || "")}</small></span></li>`;
+}
+
+function viewTareas() {
+  const g = DATA.sources.gespro;
+  if (!g) return empty("Redmine", "scripts/run_gespro_report.sh");
+  const t = g.totals, B = DATA.bands.gespro, flt = filtering();
+  const gp = g.projects.filter(passG);
+  const note = flt ? " No se filtra por proyecto." : "";
+  let html = `<section><h2>Proyectos</h2><p class="sub">${flt ? `${num(gp.length)} de ${num(g.projects.length)} proyectos, ${num(sum(gp, "total"))} tareas.` : `${num(t.tasks)} tareas en ${num(t.projects)} proyectos y ${num(t.members)} personas.`} Pulsa una columna para ordenar.</p><div class="panel">`;
+  html += gp.length ? sortable("tareas", gp, [
+    { key: "name", label: "Proyecto", cls: "name", render: (r) => esc(r.name) },
+    { key: "progress", label: "Avance", render: (r) => meter(r.progress, B) },
+    { key: "open", label: "Abiertas", render: (r) => num(r.open) },
+    { key: "overdue", label: "Vencidas", render: (r) => `<span class="${r.overdue ? "neg" : "mut"}">${num(r.overdue)}</span>` },
+    { key: "closed", label: "Cerradas", render: (r) => num(r.closed) },
+    { key: "members", label: "Personas", render: (r) => num(r.members) },
+    { key: "velocity", label: "Cerradas por semana", render: (r) => (r.velocity == null ? '<span class="mut">—</span>' : num(r.velocity)) },
+  ], "overdue") : NOMATCH;
+  html += `</div></section>`;
+
+  const agg = {};
+  if (flt) gp.forEach((p) => Object.entries(p.status_counts || {}).forEach(([k, n]) => { agg[k] = (agg[k] || 0) + n; }));
+  const sc = Object.entries(flt ? agg : g.extra.status_counts || {}).sort((a, b) => b[1] - a[1]);
+  html += `<section class="cols">
+    <div><h2>Tareas por estado</h2><p class="sub">${flt ? "Solo los proyectos filtrados." : "Reparto de todas las tareas de los proyectos analizados."}</p><div class="panel">${donut(sc, "tareas")}</div></div>
+    <div><h2>Avance frente a carga</h2><p class="sub">Cada punto es un proyecto: más abajo y a la derecha, más trabajo pendiente.</p><div class="panel chart">${scatter(gp, { x: (r) => r.open, y: (r) => r.progress, xLabel: "Tareas abiertas", yLabel: "Avance (%)", bands: B, tip: (r) => `<b>${r.name}</b><br>${num(r.open)} abiertas · ${Math.round(r.progress)}% de avance` })}</div></div></section>
+  <section class="cols">
+    <div><h2>Carga por persona</h2><p class="sub">Tareas abiertas; en rojo, las vencidas.${note}</p><div class="panel">${(() => {
+      const w = g.extra.workload || [];
+      return hbars(w.map((m) => ({ name: m.name, value: m.open, over: m.overdue })), Math.max(...w.map((m) => m.open), 1));
+    })()}</div></div>
+    <div><h2>Volumen por proyecto</h2><p class="sub">Tareas totales; los diez proyectos con más trabajo.</p><div class="panel">${(() => {
+      const top = [...gp].sort((a, b) => b.total - a.total).slice(0, 10);
+      return hbars(top.map((p) => ({ name: p.name, value: p.total })), Math.max(...top.map((p) => p.total), 1));
+    })()}</div></div></section>`;
+
+  const wd = g.extra.window_days;
+  if (wd) {
+    const rows = [["Creadas", t.created_current, t.created_previous], ["Cerradas", t.closed_current, t.closed_previous]];
+    const mx = Math.max(...rows.flatMap((r) => [r[1], r[2]]), 1);
+    html += `<section class="cols"><div><h2>Ritmo del período</h2><p class="sub">Últimos ${wd} días frente a los ${wd} anteriores.${note}</p><div class="panel pair">
+      ${rows.map(([n, c, p]) => `<div class="pair-col"><h4>${n}</h4>
+        <div class="pair-row"><span>Actual</span><span class="pair-track"><i class="pair-cur" style="width:${(c / mx) * 100}%"></i></span><b>${num(c)}</b></div>
+        <div class="pair-row"><span>Anterior</span><span class="pair-track"><i class="pair-prev" style="width:${(p / mx) * 100}%"></i></span><b>${num(p)}</b></div></div>`).join("")}</div></div>`;
+    const bn = gp.flatMap((p) => (p.bottlenecks || []).map((b) => ({ ...b, project: p.name }))).sort((a, b) => b.share - a.share).slice(0, 6);
+    html += `<div><h2>Cuellos de botella</h2><p class="sub">Estados que concentran la mayor parte del trabajo abierto.</p><div class="panel">${bn.length
+      ? `<ul class="alerts">${bn.map((b) => `<li><span><span class="pill mid">${Math.round(b.share)}%</span></span><span>${esc(b.status)} · ${num(b.count)} tareas<small>${esc(b.project)}</small></span></li>`).join("")}</ul>`
+      : `<p class="mut">No se detectan cuellos de botella.</p>`}</div></div></section>`;
+  }
+  return html;
+}
+
+function viewCodigo() {
+  const l = DATA.sources.gitlab;
+  if (!l) return empty("GitLab", "scripts/run_gitlab_ejecutive_report.sh");
+  const t = l.totals, B = DATA.bands.gitlab, wd = l.extra.window_days, flt = filtering();
+  const lp = l.projects.filter(passL);
+  const names = new Set(lp.map((p) => p.name));
+  let html = `<section><h2>Repositorios</h2><p class="sub">${flt ? `${num(lp.length)} de ${num(l.projects.length)} proyectos.` : `${num(t.projects)} proyectos, ${num(t.unique_devs)} personas con actividad.`} Los commits cuentan los últimos ${wd} días.</p><div class="panel">`;
+  html += lp.length ? sortable("codigo", lp, [
+    { key: "name", label: "Proyecto", cls: "name", render: (r) => `${esc(r.name)}<small>${esc(r.subgroup)}</small>` },
+    { key: "score", label: "Salud", render: (r) => `<span class="pill ${band(r.score, B)}">${r.score}/100</span>` },
+    { key: "pipelines_ok", label: "Pipelines correctos", sort: (r) => (r.pipelines_total ? r.pipelines_ok : null), render: (r) => (r.pipelines_total ? meter(r.pipelines_ok, [90, 70]) : '<span class="mut">sin pipelines</span>') },
+    { key: "mrs_open", label: "MRs abiertos", render: (r) => num(r.mrs_open) },
+    { key: "mrs_merged", label: "MRs mergeados", render: (r) => num(r.mrs_merged) },
+    { key: "stale", label: "Ramas sin uso", render: (r) => `<span class="${r.stale >= 5 ? "neg" : ""}">${num(r.stale)}</span><span class="mut"> / ${num(r.branches)}</span>`, sort: (r) => r.stale },
+    { key: "days_since", label: "Último commit", render: (r) => (r.days_since == null ? "—" : r.days_since === 0 ? "hoy" : `hace ${num(r.days_since)} d`) },
+    { key: "bus_factor", label: "Factor bus", render: (r) => (r.bus_factor == null ? "—" : `<span class="${r.bus_factor <= 1 ? "neg" : ""}">${r.bus_factor}</span>`) },
+  ], "score", "asc") : NOMATCH;
+  html += `</div></section>`;
+
+  const sg = {};
+  lp.forEach((p) => { sg[p.subgroup || "Sin subgrupo"] = (sg[p.subgroup || "Sin subgrupo"] || 0) + (p.total_commits || 0); });
+  const sgs = Object.entries(sg).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  html += `<section class="cols">
+    <div><h2>Salud frente a actividad</h2><p class="sub">Cada punto es un repositorio: arriba y a la derecha, sano y activo.</p><div class="panel chart">${scatter(lp, { x: (r) => r.total_commits || 0, y: (r) => r.score, xLabel: `Commits (${wd} días)`, yLabel: "Salud", bands: B, tip: (r) => `<b>${r.name}</b><br>${r.score}/100 · ${num(r.total_commits || 0)} commits` })}</div></div>
+    <div><h2>Actividad por subgrupo</h2><p class="sub">Commits de los últimos ${wd} días.</p><div class="panel">${hbars(sgs.map(([name, value]) => ({ name, value })), Math.max(...sgs.map(([, v]) => v), 1))}</div></div></section>`;
+
+  const people = l.extra.contributors || [];
+  const alerts = (l.extra.alerts || []).filter((a) => !flt || names.has(a.project));
+  html += `<section class="cols">
+    <div><h2>Quién aporta código</h2><p class="sub">Commits de los últimos ${wd} días, todos los proyectos.${flt ? " No se filtra por proyecto." : ""}</p><div class="panel">${hbars(people.map((p) => ({ name: p.name, value: p.commits })), Math.max(...people.map((p) => p.commits), 1))}</div></div>
+    <div><h2>Alertas</h2><p class="sub">${flt ? `${num(alerts.length)} alertas en los proyectos filtrados.` : `${num(t.crit)} críticas y ${num(t.att)} de atención.`}</p><div class="panel">${alerts.length ? `<ul class="alerts">${alerts.slice(0, 10).map(alertItem).join("")}</ul>` : `<p class="mut">Sin alertas.</p>`}</div></div></section>`;
+  return html;
+}
+
+function viewEvolucion() {
+  const { gespro: g, gitlab: l } = DATA.sources, act = DATA.activity || { runs: {}, reports: [] };
+  if (!g && !l) return empty("ningún sistema", "scripts/run_*.sh");
+  let html = "";
+  const reps = act.reports, files = reps.reduce((n, r) => n + r.files, 0), mb = reps.reduce((n, r) => n + r.size_kb, 0) / 1024;
+  const run = (k) => act.runs[k]?.count ?? 0;
+  const cells = [
+    [`Ejecuciones de Redmine`, num(run("gespro")), act.runs.gespro?.last ? `última ${ago(act.runs.gespro.last, DATA.now)}` : "sin registro"],
+    [`Ejecuciones de GitLab`, num(run("gitlab")), act.runs.gitlab?.last ? `última ${ago(act.runs.gitlab.last, DATA.now)}` : "sin registro"],
+    [`Informes guardados`, num(files), `${nf.format(Math.round(mb * 10) / 10)} MB en total`],
+    [`Tipos de informe`, num(reps.length), reps[0] ? `el último, ${ago(reps[0].last, DATA.now)}` : "sin informes"],
+  ];
+  html += `<section><h2>Uso de los informes</h2><p class="sub">Lo que han dejado las ejecuciones programadas hasta hoy.</p>
+    <div class="kpis" style="grid-template-columns:repeat(${cells.length}, minmax(0,1fr))">${cells.map(([t, v, f]) => `<div class="kpi"><div class="kpi-label">${t}</div><div class="kpi-val">${v}</div><div class="kpi-foot"><span class="delta">${f}</span></div></div>`).join("")}</div></section>`;
+  html += `<section class="cols"><div><h2>Ejecuciones por semana</h2><p class="sub">Cuántas veces corrió cada informe. Una barra baja avisa de ejecuciones que se saltaron.</p><div class="panel chart">${weekBars(act)}</div></div>
+    <div><h2>Informes por tipo</h2><p class="sub">Archivos conservados en la carpeta de salida.</p><div class="panel">${reps.length ? `<div class="scroll"><table><thead><tr><th>Tipo</th><th>Archivos</th><th>Tamaño</th><th>Último</th></tr></thead><tbody>${reps.map((r) => `<tr><td class="name">${esc(r.group)}</td><td>${num(r.files)}</td><td>${nf.format(Math.round(r.size_kb))} KB</td><td>${ago(r.last, DATA.now)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="mut">Todavía no hay informes.</p>`}</div></div></section>`;
+  if (g) {
+    html += `<section><h2>Evolución de Redmine</h2><p class="sub">Un punto por ejecución. Pasa el cursor para ver el valor exacto.</p><div class="grid3">
+      ${lineChart("Tareas abiertas", g.history, "open", { color: SER[0] })}${lineChart("Tareas vencidas", g.history, "overdue", { color: SER[1] })}${lineChart("Avance global", g.history, "progress", { color: SER[2], unit: "%", fixed: [0, 100] })}</div></section>`;
+  }
+  if (l) {
+    html += `<section><h2>Evolución de GitLab</h2><p class="sub">Un punto por ejecución.</p><div class="grid3">
+      ${lineChart("Salud media", l.history, "avg_health", { color: SER[0], fixed: [0, 100] })}${lineChart("MRs abiertos", l.history, "mrs_open", { color: SER[1] })}${lineChart("Pipelines correctos", l.history, "pipelines_ok", { color: SER[2], unit: "%", fixed: [0, 100] })}</div></section>`;
+  }
+  return html;
+}
+
+function viewInformes() {
+  const rep = DATA.reports;
+  if (!rep.length) return empty("informes", "scripts/run_*.sh");
+  const kb = (v) => (v >= 1024 ? `${nf.format(Math.round(v / 102.4) / 10)} MB` : `${nf.format(Math.round(v))} KB`);
+  return `<section><h2>Informes generados</h2><p class="sub">Los cinco más recientes de cada tipo, tal como se enviaron por correo.</p><div class="panel">
+    <div class="scroll"><table><thead><tr><th>Archivo</th><th>Formato</th><th>Tamaño</th><th>Generado</th></tr></thead><tbody>
+    ${rep.map((r) => `<tr><td class="name"><a href="/download/${encodeURIComponent(r.name)}">${esc(r.name)}</a></td><td>${esc(r.kind.toUpperCase())}</td><td>${kb(r.size_kb)}</td><td>${ago(r.mtime, DATA.now)}</td></tr>`).join("")}
+    </tbody></table></div></div></section>`;
+}
+
+/* ── cabecera y enrutado ────────────────────────── */
+function renderChrome() {
+  const c = DATA.company;
+  $("#title").textContent = c.name ? `Panel de proyectos · ${c.name}` : "Panel de proyectos";
+  $("#subtitle").textContent = c.unit || "Tareas de Redmine y repositorios de GitLab";
+  document.title = $("#title").textContent;
+  const chip = (name, src) => {
+    if (!src) return `<span class="chip"><span class="dot bad"></span>${name}: sin datos</span>`;
+    const old = hoursOld(src.generated_at, DATA.now) > STALE_HOURS;
+    return `<span class="chip" title="${esc(src.generated_at)}"><span class="dot ${old ? "mid" : "ok"}"></span>${name}: ${ago(src.generated_at, DATA.now)}${old ? " · desactualizado" : ""}</span>`;
+  };
+  $("#chips").innerHTML = chip("Redmine", DATA.sources.gespro) + chip("GitLab", DATA.sources.gitlab)
+    + `<button type="button" class="icon-btn" id="theme" aria-label="Cambiar entre tema claro y oscuro">Tema</button>`;
+  $("#theme").onclick = () => {
+    const cur = document.documentElement.dataset.theme
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("theme", next); } catch (_) { /* sin almacenamiento: no se recuerda */ }
+  };
+}
+
+const VIEWS = { resumen: viewResumen, tareas: viewTareas, codigo: viewCodigo, evolucion: viewEvolucion, informes: viewInformes };
+let firstPaint = true;
+function renderView(animate) {
+  const v = $("#view");
+  v.innerHTML = VIEWS[tab]();
+  v.classList.toggle("arrive", !!animate);
+  syncBar();
+}
+function render() {
+  document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  $("#main").innerHTML = `${tab === "informes" || tab === "evolucion" ? "" : filterBar()}<div id="view"></div>`;
+  renderView(firstPaint && tab === "resumen");
+  firstPaint = false;
+}
+function go(t) { tab = VIEWS[t] ? t : "resumen"; if (location.hash !== `#${tab}`) history.replaceState(null, "", `#${tab}`); render(); }
+
+document.addEventListener("click", (e) => {
+  const tabBtn = e.target.closest(".tab"); if (tabBtn) return go(tabBtn.dataset.tab);
+  const s = e.target.closest("[data-sort]");
+  if (s) {
+    const [id, key] = s.dataset.sort.split(":"), st = sortState[id];
+    sortState[id] = { key, dir: st && st.key === key && st.dir === "desc" ? "asc" : "desc" };
+    return renderView();
+  }
+  const bb = e.target.closest("[data-band]");
+  if (bb) { F.band = bb.dataset.band; return renderView(); }
+  if (e.target.closest("#f-reset")) {
+    Object.assign(F, { q: "", band: "all", group: "all", overdue: false, quiet: false });
+    return render();
+  }
+  const tile = e.target.closest("[data-go]");
+  if (tile) { const src = tile.closest(".lane").querySelector("b").textContent.includes("Redmine") ? "tareas" : "codigo"; go(src); }
+});
+document.addEventListener("input", (e) => { if (e.target.id === "f-q") { F.q = e.target.value.trim(); renderView(); } });
+document.addEventListener("change", (e) => {
+  if (e.target.id === "f-group") F.group = e.target.value;
+  else if (e.target.id === "f-overdue") F.overdue = e.target.checked;
+  else if (e.target.id === "f-quiet") F.quiet = e.target.checked;
+  else return;
+  renderView();
+});
+addEventListener("hashchange", () => go(location.hash.slice(1)));
+
+async function load() {
+  try {
+    const r = await fetch("/api/dashboard", { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    DATA = await r.json();
+  } catch (err) {
+    $("#main").innerHTML = `<div class="empty"><b>No se pudieron cargar los datos.</b> Comprueba que el servicio del panel está en marcha y vuelve a intentarlo. (${esc(err.message)})</div>`;
+    return;
+  }
+  renderChrome();
+  go(location.hash.slice(1) || "resumen");
+}
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (_) { /* sin almacenamiento */ }
+load();
+setInterval(load, 5 * 60 * 1000);
+</script>
+</body>
+</html>

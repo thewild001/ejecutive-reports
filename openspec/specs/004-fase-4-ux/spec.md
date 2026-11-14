@@ -61,15 +61,24 @@ hooks si existen:
 Un plugin con error DEBE loggear el fallo y NO romper el reporte.
 Debe existir al menos un plugin de ejemplo funcional (`plugins/logfile.py`).
 
-### R4.5 — Dashboard web mínimo
+### R4.5 — Dashboard web de KPI
 
-**ADDED** `web/app.py` (FastAPI + Jinja2) DEBE:
+**MODIFIED** `web/app.py` (FastAPI, una sola página `web/static/dashboard.html`
+sin dependencias de CDN) DEBE:
 
-- Listar los últimos archivos por tipo de reporte (PDF + exports) con enlace
-  de descarga.
-- Mostrar las métricas del último snapshot de cada reporte.
-- Servirse manualmente (`uvicorn web.app:app --port …`); no forma parte del
-  crontab ni es obligatorio para la suite.
+- No depender de recursos externos (CDN, fuentes, scripts remotos): gráficas en SVG
+  propio y, si alguna vez se necesita una librería JS, se descarga y se sirve
+  desde `web/static/`. La política CSP del servidor bloquea cualquier origen externo.
+- Leer solo los `output/.dashboard_<fuente>.json` que deja cada ejecución de
+  cron (`common/dashboard_data.py`); no consulta Redmine/GitLab ni usa credenciales.
+- Mostrar KPI de tareas (Redmine/GESPRO) y de repositorios (GitLab) con
+  variación frente a la ejecución anterior, tendencia y mapa de salud por proyecto.
+- Ofrecer filtros (búsqueda, estado de salud, subgrupo, solo vencidas, sin
+  actividad reciente) que recalculan mosaicos, tablas y KPI.
+- Listar los últimos informes con descarga protegida contra path traversal.
+- Mostrar un estado vacío explicativo mientras no exista ningún dataset.
+- Servirse manualmente (`pip install .[web]`; `uvicorn web.app:app --port …`);
+  no forma parte del crontab ni es obligatorio para la suite.
 
 ## Fuera de scope
 

@@ -25,21 +25,23 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from common.settings import load_config, rotate_outputs, REPORTS_ROOT
 from common.pdfbase import ReportPDF
-from common.delivery import deliver
+from common.delivery import deliver, delivery_exit_code
 from common.i18n import t as _t
 from common.plugins import load_plugins, run_hook
 from common.themes import get_theme
 
 log = logging.getLogger(__name__)
 
+EXIT_STALE_DATA = 5  # el JSON de datos supera trends.max_age_days
+
 IMPACT_LABEL = {"alto": "ALTO", "medio": "MEDIO", "bajo": "BAJO"}
 
 
 def build_pdf(data: dict, cfg: dict, out_path: Path) -> None:
-    from trends.premium_pdf import build_premium_pdf, is_premium_data
+    from trends.tech_trends_v2 import branding_from_config, build_report, is_v2_data
 
-    if is_premium_data(data):
-        build_premium_pdf(data, cfg, out_path)
+    if is_v2_data(data):
+        build_report(data, out_path, branding_from_config(cfg))
         return
 
     loc = cfg["company"].get("locale", "es")
@@ -82,6 +84,15 @@ def main() -> int:
         log.error("Copia trends/trends_data.example.json a trends/trends_data.json y edítalo.")
         return 1
 
+    max_age = int(t.get("max_age_days") or 0)
+    if max_age:
+        age_days = (datetime.datetime.now().timestamp() - data_path.stat().st_mtime) / 86400
+        if age_days > max_age:
+            log.error("Los datos de tendencias están desactualizados: %s tiene %.1f días "
+                      "(máximo trends.max_age_days=%d). No se genera ni envía el boletín.",
+                      data_path.name, age_days, max_age)
+            return EXIT_STALE_DATA
+
     data = json.loads(data_path.read_text(encoding="utf-8"))
 
     out_dir = cfg["output"]["dir"]
@@ -101,8 +112,10 @@ def main() -> int:
     exts = tuple(f".{f}" for f in cfg.get("export", {}).get("formats", ["pdf"]))
     rotate_outputs(out_dir, prefix, cfg["output"].get("keep_last", 10), exts=exts)
 
-    deliver(out_path, cfg, f"{t.get('header_title', 'Boletín de Tendencias')} — {data.get('periodo', '')}")
-    return 0
+    results = deliver(out_path, cfg,
+                      f"{t.get('header_title', 'Boletín de Tendencias')} — {data.get('periodo', '')}",
+                      report_key="trends")
+    return delivery_exit_code(results)
 
 
 if __name__ == "__main__":
