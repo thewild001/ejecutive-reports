@@ -81,7 +81,7 @@ def connect(path: Path) -> sqlite3.Connection:
     return connection
 
 
-def start(report: str, log_path: str | None) -> str:
+def start(report: str, log_path: str | None, pid: int, host: str) -> str:
     run_id = str(uuid.uuid4())
     started = utc_now()
     with connect(database_path()) as db:
@@ -89,7 +89,7 @@ def start(report: str, log_path: str | None) -> str:
             """INSERT INTO executions
                (run_id, report, status, started_at, host, pid, log_path)
                VALUES (?, ?, 'RUNNING', ?, ?, ?, ?)""",
-            (run_id, report, started, socket.gethostname(), os.getpid(), log_path),
+            (run_id, report, started, host, pid, log_path),
         )
     return run_id
 
@@ -120,7 +120,7 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     begin = sub.add_parser("start")
     begin.add_argument("--report", required=True)
-    begin.add_argument("--log-path")
+    begin.add_argument("--log-path")\n    begin.add_argument("--pid", type=int, default=os.getpid())\n    begin.add_argument("--host", default=socket.gethostname())
     end = sub.add_parser("finish")
     end.add_argument("--run-id", required=True)
     end.add_argument("--status", choices=sorted(TERMINAL_STATES), required=True)
@@ -128,7 +128,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.command == "start":
-            print(start(args.report, args.log_path))
+            print(start(args.report, args.log_path, args.pid, args.host))
         else:
             finish(args.run_id, args.status, args.exit_code)
     except (OSError, sqlite3.Error, RuntimeError, ValueError) as exc:
