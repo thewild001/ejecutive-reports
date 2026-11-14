@@ -28,7 +28,7 @@ def database_path() -> Path:
     if configured:
         return Path(configured).expanduser().resolve()
     root = Path(__file__).resolve().parent.parent
-    return root / "output" / ".execution-ledger.sqlite3"
+    return root / "output" / ".state" / "execution-ledger.sqlite3"
 
 
 def connect(path: Path) -> sqlite3.Connection:
