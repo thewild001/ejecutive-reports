@@ -28,7 +28,7 @@ for var in REPORTS_PYTHON REPORTS_PROXY REPORTS_LOG_DIR REPORTS_REQUIRE_DELIVERY
 done
 
 if [ -n "${REPORTS_PYTHON:-}" ]; then
-  PY="$REPORTS_PYTHON"
+  PY="$REPORTS_PYTHON"\n  case "$PY" in */*) case "$PY" in /*) ;; *) PY="$ROOT/$PY";; esac ;; esac
 elif [ -x "$ROOT/.venv/bin/python" ]; then
   PY="$ROOT/.venv/bin/python"
 else
