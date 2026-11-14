@@ -53,7 +53,7 @@ fi
 export REPORTS_REQUIRE_DELIVERY="${REPORTS_REQUIRE_DELIVERY:-1}"
 
 # El registro RUNNING se crea antes del lock para conservar los intentos omitidos.
-RUN_ID="$("$PY" -m common.execution_ledger start --report "$REPORT" --log-path "$LOG")" || {
+RUN_ID="$("$PY" -m common.execution_ledger start --report "$REPORT" --log-path "$LOG" --pid "$" --host "$(hostname)")" || {
   echo "ERROR: no se pudo registrar el inicio en el ledger; ejecución cancelada." >&2
   exit 70
 }
@@ -63,7 +63,7 @@ finish_run() {
   local status="$1" code="$2"
   [ "$FINISHED" -eq 1 ] && return 0
   FINISHED=1
-  "$PY" -m common.execution_ledger finish --run-id "$RUN_ID" --status "$status" --exit-code "$code"
+  if ! "$PY" -m common.execution_ledger finish --run-id "$RUN_ID" --status "$status" --exit-code "$code"; then\n    echo "ERROR: fallo al cerrar el ledger (run_id=$RUN_ID)." >&2\n    return 1\n  fi
 }
 handle_signal() {
   local signal="$1" code="$2"
