@@ -206,11 +206,11 @@ son locales; no se debe ubicar la base en NFS ni compartirla entre hosts.
 REPORTS/
 ├── config.yaml / .env / pyproject.toml / requirements.txt
 ├── Dockerfile / docker-compose.yml / install.sh / run.sh / crontab.example
-├── common/            # settings, base PDF (fpdf2+DejaVu), delivery (SMTP/Telegram)
+├── common/            # settings, execution ledger, base PDF, delivery (SMTP/Telegram)
 ├── gespro/            # reporte Redmine/GESPRO
 ├── gitlab/            # reporte GitLab
 ├── trends/            # boletín de tendencias + trends_data.json
-└── output/            # PDFs generados
+├── tests/             # pruebas automatizadas\n└── output/            # PDFs y estado local (output/.state/)
 ```
 
 Generado por el Grupo de Inteligencia Empresarial — FORTES/UCI.
