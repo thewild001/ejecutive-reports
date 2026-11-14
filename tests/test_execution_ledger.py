@@ -9,7 +9,7 @@ def test_start_and_finish_persist_execution(tmp_path, monkeypatch):
     db_path = tmp_path / "state" / "ledger.sqlite3"
     monkeypatch.setenv("REPORTS_STATE_DB", str(db_path))
 
-    run_id = ledger.start("gespro", "/tmp/gespro.log")
+    run_id = ledger.start("gespro", "/tmp/gespro.log", 123, "test-host")
     ledger.finish(run_id, "SUCCEEDED", 0)
 
     with sqlite3.connect(db_path) as db:
@@ -28,7 +28,7 @@ def test_start_and_finish_persist_execution(tmp_path, monkeypatch):
 
 def test_skipped_lock_is_a_terminal_non_success_state(tmp_path, monkeypatch):
     monkeypatch.setenv("REPORTS_STATE_DB", str(tmp_path / "ledger.sqlite3"))
-    run_id = ledger.start("gitlab", None)
+    run_id = ledger.start("gitlab", None, 123, "test-host")
 
     ledger.finish(run_id, "SKIPPED_LOCKED", 75)
 
@@ -41,7 +41,7 @@ def test_skipped_lock_is_a_terminal_non_success_state(tmp_path, monkeypatch):
 
 def test_execution_cannot_be_finished_twice(tmp_path, monkeypatch):
     monkeypatch.setenv("REPORTS_STATE_DB", str(tmp_path / "ledger.sqlite3"))
-    run_id = ledger.start("trends", None)
+    run_id = ledger.start("trends", None, 123, "test-host")
     ledger.finish(run_id, "FAILED", 1)
 
     with pytest.raises(ValueError, match="ya terminó"):
