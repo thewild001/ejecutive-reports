@@ -57,6 +57,11 @@ Los PDFs quedan en `./output/` (montado como volumen) con rotación automática
 
 Ver `crontab.example` con variantes local y Docker.
 
+Para el plan de endurecimiento de las ejecuciones programadas (observabilidad,
+control de concurrencia, recuperación, verificación de artefactos y pruebas),
+consulta [Plan de confiabilidad de ejecuciones programadas](docs/implementation/scheduled-execution-reliability-plan.md).
+El documento define tareas y criterios de aceptación; no implica que estén implementados.
+
 ## Configuración (config.yaml)
 
 - `company.*` — nombre, unidad y autoría que aparecen en portadas y pies de página.
@@ -155,7 +160,7 @@ Ver `crontab.example` con variantes local y Docker.
   transformar filas) y `post_export(report, paths, cfg)`. Ejemplo incluido:
   `plugins/logfile.py`. Un plugin que falla solo deja warning en el log.
 - **Dashboard web opcional** (FastAPI, fuera del crontab; requiere `pip install .[web]`):
-
+  
   ```bash
   uvicorn web.app:app --port 8080
   ```
