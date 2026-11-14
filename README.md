@@ -57,6 +57,43 @@ Los PDFs quedan en `./output/` (montado como volumen) con rotación automática
 
 Ver `crontab.example` con variantes local y Docker.
 
+Para el plan de endurecimiento de las ejecuciones programadas (observabilidad,
+control de concurrencia, recuperación, verificación de artefactos y pruebas),
+consulta [Plan de confiabilidad de ejecuciones programadas](docs/implementation/scheduled-execution-reliability-plan.md).
+El documento define tareas y criterios de aceptación. En esta rama ya se implementó el registro inicial descrito a continuación.
+
+### Registro de ejecuciones programadas (fase inicial)
+
+Los wrappers de `scripts/` registran cada intento en un ledger SQLite local:
+`output/.state/execution-ledger.sqlite3`. El directorio y la base se crean con
+permisos restrictivos; el estado se conserva entre ejecuciones. Cada intento
+recibe un `run_id`, y el wrapper lo exporta como `REPORTS_RUN_ID` para que los
+generadores o futuras integraciones puedan correlacionar sus eventos.
+
+Estados persistidos actualmente:
+
+- `RUNNING`: intento registrado y todavía en ejecución.
+- `SUCCEEDED`: el generador terminó con código 0.
+- `FAILED`: el generador terminó con código distinto de 0.
+- `SKIPPED_LOCKED`: otra instancia tenía el lock; el wrapper termina con código 75.
+- `INTERRUPTED`: el wrapper recibió INT, TERM o HUP.
+
+El ledger almacena inicio/fin UTC, duración, reporte, PID, host, ruta del log y
+código de salida. Los errores de ejecución se resumen también en stderr para
+que cron pueda notificarlos mediante `MAILTO`. El log detallado permanece en
+`logs/<reporte>.log`.
+
+Variables adicionales:
+
+- `REPORTS_STATE_DB`: ruta opcional para cambiar la ubicación del SQLite.
+- `REPORTS_RUN_ID`: identificador generado por el wrapper y exportado al proceso
+  Python del reporte (no debe establecerse manualmente).
+
+**Límites actuales:** no existe todavía una interfaz de consulta/health, recuperación
+automática de registros `RUNNING` abandonados, timeout, política de reintentos,
+verificación de PDF ni garantía de coordinación multi-host. El ledger y `flock`
+son locales; no se debe ubicar la base en NFS ni compartirla entre hosts.
+
 ## Configuración (config.yaml)
 
 - `company.*` — nombre, unidad y autoría que aparecen en portadas y pies de página.
@@ -155,7 +192,7 @@ Ver `crontab.example` con variantes local y Docker.
   transformar filas) y `post_export(report, paths, cfg)`. Ejemplo incluido:
   `plugins/logfile.py`. Un plugin que falla solo deja warning en el log.
 - **Dashboard web opcional** (FastAPI, fuera del crontab; requiere `pip install .[web]`):
-
+  
   ```bash
   uvicorn web.app:app --port 8080
   ```
@@ -169,11 +206,12 @@ Ver `crontab.example` con variantes local y Docker.
 REPORTS/
 ├── config.yaml / .env / pyproject.toml / requirements.txt
 ├── Dockerfile / docker-compose.yml / install.sh / run.sh / crontab.example
-├── common/            # settings, base PDF (fpdf2+DejaVu), delivery (SMTP/Telegram)
+├── common/            # settings, execution ledger, base PDF, delivery (SMTP/Telegram)
 ├── gespro/            # reporte Redmine/GESPRO
 ├── gitlab/            # reporte GitLab
 ├── trends/            # boletín de tendencias + trends_data.json
-└── output/            # PDFs generados
+├── tests/             # pruebas automatizadas
+└── output/            # PDFs y estado local (output/.state/)
 ```
 
 Generado por el Grupo de Inteligencia Empresarial — FORTES/UCI.

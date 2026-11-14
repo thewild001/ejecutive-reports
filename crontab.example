@@ -6,12 +6,15 @@
 #   3 = falló un canal de entrega · 4 = no hay canales habilitados
 #   5 = datos de tendencias desactualizados (trends.max_age_days)
 #   6 = GitLab: el servidor MCP no devolvió datos (no se envía un informe vacío)
-# y escribe su registro en logs/<reporte>.log. Para recibir aviso de fallos con
-# el correo local del servidor, define MAILTO (cron envía la salida de errores).
+# y escribe su registro en logs/<reporte>.log. Los intentos se guardan en el
+# ledger SQLite output/.state/execution-ledger.sqlite3 con un run_id y estado.
+# Un lock ocupado produce SKIPPED_LOCKED y código 75 (no se considera éxito).
+# Para recibir avisos, define MAILTO: el wrapper emite un resumen de fallos a stderr.
 #
 # Variables útiles (también valen en .env): REPORTS_PROXY, REPORTS_PYTHON,
-# REPORTS_LOG_DIR, REPORTS_REQUIRE_DELIVERY=0 (permitir ejecuciones sin envío).
+# REPORTS_LOG_DIR, REPORTS_STATE_DB y REPORTS_REQUIRE_DELIVERY=0 (permitir ejecuciones sin envío).
 # Credenciales SMTP: SMTP_USER y SMTP_PASS en .env (nunca en el código ni en git).
+# El ledger/flock es local al host: no compartir output/.state en NFS ni entre hosts.
 
 SHELL=/bin/bash
 #MAILTO=admin@example.org
