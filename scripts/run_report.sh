@@ -3,8 +3,8 @@
 set -euo pipefail
 umask 077
 
-ROOT="$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)"
-REPORT="\${1:-}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPORT="${1:-}"
 [ "$#" -gt 0 ] && shift
 case "$REPORT" in
   gespro) ENTRY="gespro/gespro_report.py" ;;
@@ -16,18 +16,18 @@ esac
 # Cargar únicamente variables propias del wrapper; nunca ejecutar .env como shell.
 load_env_var() {
   local name="$1" line value
-  [ -n "\${!name:-}" ] && return 0
+  [ -n "${!name:-}" ] && return 0
   [ -f "$ROOT/.env" ] || return 0
-  line="$(grep -E "^[[:space:]]*\${name}=" "$ROOT/.env" | tail -n 1 || true)"
+  line="$(grep -E "^[[:space:]]*${name}=" "$ROOT/.env" | tail -n 1 || true)"
   [ -n "$line" ] || return 0
-  value="\${line#*=}"; value="\${value%\\"}"; value="\${value#\\"}"
+  value="${line#*=}"; value="${value%\\"}"; value="${value#\\"}"
   export "$name=$value"
 }
 for var in REPORTS_PYTHON REPORTS_PROXY REPORTS_LOG_DIR REPORTS_REQUIRE_DELIVERY REPORTS_STATE_DB; do
   load_env_var "$var"
 done
 
-if [ -n "\${REPORTS_PYTHON:-}" ]; then
+if [ -n "${REPORTS_PYTHON:-}" ]; then
   PY="$REPORTS_PYTHON"
 elif [ -x "$ROOT/.venv/bin/python" ]; then
   PY="$ROOT/.venv/bin/python"
@@ -39,18 +39,18 @@ if [ -z "$PY" ] || ! "$PY" --version >/dev/null 2>&1; then
   exit 127
 fi
 
-LOG_DIR="\${REPORTS_LOG_DIR:-$ROOT/logs}"
+LOG_DIR="${REPORTS_LOG_DIR:-$ROOT/logs}"
 mkdir -p "$LOG_DIR" "$ROOT/.locks" "$ROOT/output/.state"
 LOG="$LOG_DIR/$REPORT.log"
-export REPORTS_STATE_DB="\${REPORTS_STATE_DB:-$ROOT/output/.state/execution-ledger.sqlite3}"
+export REPORTS_STATE_DB="${REPORTS_STATE_DB:-$ROOT/output/.state/execution-ledger.sqlite3}"
 stamp() { date '+%Y-%m-%d %H:%M:%S'; }
 log() { printf '%s [%s] %s\n' "$(stamp)" "$REPORT" "$*" >> "$LOG"; }
 
-if [ -n "\${REPORTS_PROXY:-}" ]; then
+if [ -n "${REPORTS_PROXY:-}" ]; then
   export HTTP_PROXY="$REPORTS_PROXY" HTTPS_PROXY="$REPORTS_PROXY"
   export http_proxy="$REPORTS_PROXY" https_proxy="$REPORTS_PROXY"
 fi
-export REPORTS_REQUIRE_DELIVERY="\${REPORTS_REQUIRE_DELIVERY:-1}"
+export REPORTS_REQUIRE_DELIVERY="${REPORTS_REQUIRE_DELIVERY:-1}"
 
 # El registro RUNNING se crea antes del lock para conservar los intentos omitidos.
 RUN_ID="$("$PY" -m common.execution_ledger start --report "$REPORT" --log-path "$LOG")" || {
