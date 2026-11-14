@@ -2,7 +2,7 @@
 
 **Rama base:** `refactor/cron-wrappers`  
 **Rama de trabajo:** `feat/scheduled-execution-reliability`  
-**Estado:** planificación; no implica que las tareas estén implementadas.
+**Estado:** implementación incremental; consultar el apartado «Avance implementado» antes de asumir que una fase está completa.
 
 ## 1. Objetivo y alcance
 
@@ -28,6 +28,19 @@ Cada ejecución debe permitir determinar:
 - No reintentar a ciegas el flujo completo: clasificar errores y garantizar idempotencia antes de automatizar reintentos.
 - Los locks `flock` son coordinación local. No asumir que ofrecen exclusión distribuida fiable sobre NFS o entre hosts.
 - Proteger logs, base de datos y locks con permisos restrictivos; nunca registrar tokens, contraseñas ni variables secretas.
+
+## Avance implementado en esta rama
+
+La primera entrega cubre una parte de las fases 0 y 1, además de correcciones puntuales del wrapper:
+
+- Añadido `common/execution_ledger.py`: SQLite local, versión de esquema inicial, transacciones, espera de bloqueo de 10 s y permisos restrictivos.
+- Añadido `run_id` UUID por invocación y exportado como `REPORTS_RUN_ID`.
+- Persistidos `RUNNING`, `SUCCEEDED`, `FAILED`, `SKIPPED_LOCKED` e `INTERRUPTED`, con tiempos, duración, host, PID, log y código de salida.
+- Un lock ocupado deja de ser un éxito: se registra `SKIPPED_LOCKED` y se devuelve el código 75.
+- Se resumen fallos a stderr para que cron pueda emitir notificaciones mediante `MAILTO`.
+- Añadidas pruebas unitarias iniciales del ciclo de vida del ledger y documentación en README/crontab.
+
+**Pendiente de completar:** consulta CLI/health, recuperación de ejecuciones abandonadas, timeout, validación de artefactos, resultado independiente por canal de entrega, retención y pruebas de integración/concurrencia. La suite todavía debe ejecutarse en un entorno clonado del repositorio; la escritura remota de archivos no equivale a validar el runtime.
 
 ## 3. Plan de tareas
 
