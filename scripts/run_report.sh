@@ -28,7 +28,8 @@ for var in REPORTS_PYTHON REPORTS_PROXY REPORTS_LOG_DIR REPORTS_REQUIRE_DELIVERY
 done
 
 if [ -n "${REPORTS_PYTHON:-}" ]; then
-  PY="$REPORTS_PYTHON"\n  case "$PY" in */*) case "$PY" in /*) ;; *) PY="$ROOT/$PY";; esac ;; esac
+  PY="$REPORTS_PYTHON"
+  case "$PY" in */*) case "$PY" in /*) ;; *) PY="$ROOT/$PY";; esac ;; esac
 elif [ -x "$ROOT/.venv/bin/python" ]; then
   PY="$ROOT/.venv/bin/python"
 else
@@ -40,13 +41,15 @@ if [ -z "$PY" ] || ! "$PY" --version >/dev/null 2>&1; then
 fi
 
 LOG_DIR="${REPORTS_LOG_DIR:-$ROOT/logs}"
+case "$LOG_DIR" in /*) ;; *) LOG_DIR="$ROOT/$LOG_DIR";; esac
 mkdir -p "$LOG_DIR" "$ROOT/.locks" "$ROOT/output/.state"
 LOG="$LOG_DIR/$REPORT.log"
 export REPORTS_STATE_DB="${REPORTS_STATE_DB:-$ROOT/output/.state/execution-ledger.sqlite3}"
 case "$REPORTS_STATE_DB" in /*) ;; *) REPORTS_STATE_DB="$ROOT/$REPORTS_STATE_DB";; esac
 export REPORTS_STATE_DB
 stamp() { date '+%Y-%m-%d %H:%M:%S'; }
-log() { printf '%s [%s] %s\n' "$(stamp)" "$REPORT" "$*" >> "$LOG"; }
+log() { printf '%s [%s] %s
+' "$(stamp)" "$REPORT" "$*" >> "$LOG"; }
 
 if [ -n "${REPORTS_PROXY:-}" ]; then
   export HTTP_PROXY="$REPORTS_PROXY" HTTPS_PROXY="$REPORTS_PROXY"
