@@ -44,7 +44,8 @@ mkdir -p "$LOG_DIR" "$ROOT/.locks" "$ROOT/output/.state"
 LOG="$LOG_DIR/$REPORT.log"
 export REPORTS_STATE_DB="${REPORTS_STATE_DB:-$ROOT/output/.state/execution-ledger.sqlite3}"
 stamp() { date '+%Y-%m-%d %H:%M:%S'; }
-log() { printf '%s [%s] %s\n' "$(stamp)" "$REPORT" "$*" >> "$LOG"; }
+log() { printf '%s [%s] %s
+' "$(stamp)" "$REPORT" "$*" >> "$LOG"; }
 
 if [ -n "${REPORTS_PROXY:-}" ]; then
   export HTTP_PROXY="$REPORTS_PROXY" HTTPS_PROXY="$REPORTS_PROXY"
@@ -63,7 +64,10 @@ finish_run() {
   local status="$1" code="$2"
   [ "$FINISHED" -eq 1 ] && return 0
   FINISHED=1
-  if ! "$PY" -m common.execution_ledger finish --run-id "$RUN_ID" --status "$status" --exit-code "$code"; then\n    echo "ERROR: fallo al cerrar el ledger (run_id=$RUN_ID)." >&2\n    return 1\n  fi
+  if ! "$PY" -m common.execution_ledger finish --run-id "$RUN_ID" --status "$status" --exit-code "$code"; then
+    echo "ERROR: fallo al cerrar el ledger (run_id=$RUN_ID)." >&2
+    return 1
+  fi
 }
 handle_signal() {
   local signal="$1" code="$2"
